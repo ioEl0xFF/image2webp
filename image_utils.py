@@ -58,8 +58,11 @@ def resize_fit(img: Image.Image, size: List[int]) -> Image.Image:
     img_resized = img.resize((new_w, new_h), 1)
 
     # 余白を追加してターゲットサイズに合わせる
-    # 透過で余白を追加
-    result = Image.new("RGBA", (target_w, target_h), (255, 255, 255, 0))
+    # ターゲットサイズのアスペクト比が1:1の場合、透過で余白を追加
+    if target_w / target_h == 1:
+        result = Image.new("RGBA", (target_w, target_h), (255, 255, 255, 0))
+    else:
+        result = Image.new("RGBA", (target_w, target_h), (255, 255, 255, 255))
 
     # 中央に配置
     left = (target_w - new_w) // 2
