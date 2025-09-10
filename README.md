@@ -108,8 +108,8 @@ output/
 
 ### 出力ファイル
 
--   `all_image_names.json`: 全ファイルの画像名情報（JSON 形式）
--   `all_converted_images.txt`: 変換済み画像ファイルの一覧
+-   `.logs/all_image_names.json`: 全ファイルの画像名情報（JSON 形式）
+-   `.logs/all_converted_images.txt`: 変換済み画像ファイルの一覧
 -   `.logs/LOG.log`: 詳細な処理ログ
 
 ## 対応画像形式

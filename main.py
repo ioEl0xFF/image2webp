@@ -143,14 +143,14 @@ def save_results(all_image_names: List[Dict[str, str]], all_converted_images: Li
         all_image_names: 全ファイルの画像名情報
         all_converted_images: 変換された画像ファイルのパス一覧
     """
-    # 全ファイルの結果をJSON出力
-    json_file = "all_image_names.json"
+    # 全ファイルの結果をJSON出力（ログディレクトリに保存）
+    json_file = os.path.join(config.LOG_DIR, "all_image_names.json")
     with open(json_file, "w", encoding="utf-8") as f:
         json.dump(all_image_names, f, ensure_ascii=False, indent=2)
     print(f"全ファイルの画像名JSON出力完了: {json_file}")
 
-    # 変換成功画像の一覧をファイル出力
-    list_file = "all_converted_images.txt"
+    # 変換成功画像の一覧をファイル出力（ログディレクトリに保存）
+    list_file = os.path.join(config.LOG_DIR, "all_converted_images.txt")
     with open(list_file, "w", encoding="utf-8") as f:
         f.write("\n".join(all_converted_images))
 
