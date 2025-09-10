@@ -34,7 +34,7 @@ IMAGES_DIR = "images"
 IMAGE_PATTERN = r"＜画像(?:名|\d*)?(?:（[^）]*）)?＞\s*([a-zA-Z0-9\-_]+)"
 
 # コード抽出正規表現（GSTにも対応）
-CODE_PATTERN = r"^(COMFRPTC\d+|GSTFRPTA\d+)"
+CODE_PATTERN = r"^(COMFRPTC\d+|GSTFRPTA\d+|THUMBNAIL)"
 
 # 左セルコードと幅の対応
 WIDTH_MAP = {
@@ -50,6 +50,7 @@ WIDTH_MAP = {
     "GSTFRPTA15": [[900, 0], [500, 0]],
     "COMFRPTC03": [[900, 0], [500, 0]],
     "COMFRPTC30": [[900, 600], [500, 333]],
+    "THUMBNAIL" : [[900, 600]],
 }
 
 # 確認する拡張子

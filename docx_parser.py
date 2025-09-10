@@ -65,6 +65,41 @@ def extract_image_names_from_docx(docx_file: str) -> List[Dict[str, str]]:
                         "image_name": match.strip()
                     })
 
+    # THUMBNAILの画像名を追加
+    if image_names:
+        print("=== THUMBNAILの画像名追加処理開始 ===")
+        # image_namesの中から "-kv" または "_kv" を含む画像名を抽出し、
+        # "kv" を "thumbnail" に置換した画像名を image_names に追加
+        additional_matches = []
+        for image_info in image_names:
+            image_name = image_info["image_name"]
+            # "-kv" または "_kv" を含むか判定
+            if re.search(r'.*-kv', image_name):
+                # "-kv" を "-thumbnail" に置換
+                new_name = re.sub(r'-kv', '-thumbnail', image_name)
+                additional_matches.append(new_name)
+            elif re.search(r'.*_kv', image_name):
+                # "_kv" を "_thumbnail" に置換
+                new_name = re.sub(r'_kv', '_thumbnail', image_name)
+                additional_matches.append(new_name)
+
+            # imageディレクトリに画像が存在するか確認(拡張子は無視)
+            if os.path.exists(f"{config.IMAGES_DIR}/{image_name}.*"):
+                additional_matches.append(image_name)
+
+        if additional_matches:
+            print(f"追加された画像名: {additional_matches}")
+            logger.info(f"追加された画像名: {additional_matches}")
+
+            # image_namesに追加
+            for thumbnail_name in additional_matches:
+                image_names.append({
+                    "file_name": file_name,
+                    "output_dir": output_dir,
+                    "row_index": "THUMBNAIL",
+                    "image_name": thumbnail_name.strip()
+                })
+
     print("=== 正規表現抽出完了 ===")
     print(f"抽出された画像名数: {len(image_names)}")
     logger.info(f"画像名抽出完了: {file_name} - 抽出数: {len(image_names)}")

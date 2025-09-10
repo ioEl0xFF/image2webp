@@ -116,7 +116,12 @@ def process_single_file(docx_file: str, file_index: int, total_files: int) -> Li
 
         # 幅ごとにWebP変換（元画像がWebPの場合はリサイズのみ）
         for size in sizes:
-            output_file = f"{output_dir}/{image_name}{size[0]}.webp"
+            if row_text == "THUMBNAIL":
+                # THUMBNAILの場合は、画像名の末尾にサイズを記載しない
+                output_file = f"{output_dir}/{image_name}.webp"
+            else:
+                output_file = f"{output_dir}/{image_name}{size[0]}.webp"
+
             print(f"  → 変換開始: {input_file} → {output_file} (width={size[0]} height={size[1]})")
 
             # Pillowを使用して変換（WebP形式の場合はリサイズのみ）
