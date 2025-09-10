@@ -9,6 +9,7 @@ import re
 DOCX_DIRECTORY = "docxs"
 OUTPUT_BASE_DIR = "output"
 IMAGES_DIR = "images"
+HTML_DIR = "html"
 
 # 正規表現パターン
 # ＜画像＞ or ＜画像名＞ 両方対応、全角括弧補足も対応
@@ -51,6 +52,22 @@ WIDTH_MAP = {
     "COMFRPTC03": [[900, 0], [500, 0]],
     "COMFRPTC30": [[900, 600], [500, 333]],
     "THUMBNAIL" : [[900, 600]],
+}
+
+# HTMLの画像置き換え順
+HTML_IMAGE_REPLACE_ORDER = {
+    "COMFRPTC09": [1800, 1200, 900, 500, 900, 900],
+    "COMFRPTC12": [1200, 900, 500, 900, 500],
+    "COMFRPTC14": [800, 600, 400, 400],
+    "COMFRPTC13": [1200, 900, 500, 900, 500],
+    "COMFRPTC34": [1800, 1200, 900, 500, 900],
+    "COMFRPTC15": [300, 150, 150],
+    "COMFRPTC23": [360, 240, 120, 120],
+    "COMFRPTC17": [900, 500, 500],
+    "COMFRPTC21": [900, 500, 900],
+    "GSTFRPTA15": [900, 500, 900],
+    "COMFRPTC03": [900, 500, 500],
+    "COMFRPTC30": [900, 500, 500],
 }
 
 # 確認する拡張子

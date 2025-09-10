@@ -75,18 +75,17 @@ def extract_image_names_from_docx(docx_file: str) -> List[Dict[str, str]]:
         additional_matches = []
         for image_info in image_names:
             image_name = image_info["image_name"]
+            new_name = ""
             # "-kv" または "_kv" を含むか判定
             if re.search(r'.*-kv', image_name):
                 # "-kv" を "-thumbnail" に置換
                 new_name = re.sub(r'-kv', '-thumbnail', image_name)
-                additional_matches.append(new_name)
             elif re.search(r'.*_kv', image_name):
                 # "_kv" を "_thumbnail" に置換
                 new_name = re.sub(r'_kv', '_thumbnail', image_name)
-                additional_matches.append(new_name)
 
             # imageディレクトリに画像が存在するか確認(拡張子は無視)
-            if image_utils.find_input_image(image_name):
+            if image_utils.find_input_image(new_name):
                 additional_matches.append(image_name)
 
         if additional_matches:

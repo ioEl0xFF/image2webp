@@ -46,6 +46,108 @@ def setup_logging():
     return logger
 
 
+def extract_code_from_row_index(row_index: str, logger) -> str:
+    """
+    row_indexからコード部分を抽出する
+
+    Args:
+        row_index: 行インデックス（左セルのテキスト）
+        logger: ロガー
+
+    Returns:
+        抽出されたコード（抽出失敗時はNone）
+    """
+    code_match = re.match(config.CODE_PATTERN, row_index)
+    if not code_match:
+        print(f"  [WARN] コード抽出失敗: {row_index}")
+        logger.warning(f"コード抽出失敗: {row_index}")
+        return None
+
+    return code_match.group(1)
+
+
+def replace_html_image_names(html_content: str, image_names: List[Dict[str, str]], html_file_path: str, logger) -> str:
+    """
+    HTMLファイル内の画像名を置き換える
+
+    Args:
+        html_content: HTMLファイルの内容
+        image_names: 画像名情報のリスト
+        html_file_path: HTMLファイルのパス
+        logger: ロガー
+
+    Returns:
+        置き換え後のHTMLコンテンツ
+    """
+    print("=== HTML画像名置き換え処理実行 ===")
+
+    # 各行の画像名ごとに処理
+    for record in image_names:
+        row_index = record["row_index"]
+        image_name = record["image_name"]
+
+        print(f"処理対象: row_index={row_index}, image_name={image_name}")
+
+        # row_indexからコード部分を抽出
+        code = extract_code_from_row_index(row_index, logger)
+        if not code:
+            continue
+
+        # 抽出したコードからHTML_IMAGE_REPLACE_ORDERの要素を取得
+        if code not in config.HTML_IMAGE_REPLACE_ORDER:
+            print(f"  [WARN] {code} の置き換え順が未定義。スキップ: {image_name}")
+            logger.warning(f"置き換え順未定義: {code} - スキップ: {image_name}")
+            continue
+
+        replace_order = config.HTML_IMAGE_REPLACE_ORDER[code]
+        print(f"  置き換え順: {replace_order}")
+
+        # HTMLファイル内でimage_nameと一致するファイル名を検索・置換
+        current_content = html_content
+        search_start = 0
+
+        for i, size in enumerate(replace_order):
+            # 検索パターン: 画像名 + 拡張子（jpg, png, webp等）
+            pattern = rf'\b{re.escape(image_name)}\.(jpg|jpeg|png|webp|JPG|JPEG|PNG|WEBP)\b'
+
+            # 現在の位置から検索
+            match = re.search(pattern, current_content[search_start:], re.IGNORECASE)
+
+            if match:
+                # マッチした位置を全体の位置に変換
+                match_start = search_start + match.start()
+                match_end = search_start + match.end()
+
+                # 置換後のファイル名
+                new_filename = f"{image_name}{size}.webp"
+
+                print(f"    置換 {i+1}/{len(replace_order)}: {match.group()} → {new_filename}")
+                logger.info(f"HTML画像名置換: {match.group()} → {new_filename}")
+
+                # 置換実行
+                current_content = current_content[:match_start] + new_filename + current_content[match_end:]
+
+                # 次の検索開始位置を更新（置換後の位置から）
+                search_start = match_start + len(new_filename)
+            else:
+                print(f"    [WARN] 置換 {i+1}/{len(replace_order)}: {image_name} のマッチが見つかりません")
+                logger.warning(f"HTML画像名マッチなし: {image_name} (置換 {i+1}/{len(replace_order)})")
+
+        html_content = current_content
+
+    # 置換後のHTMLファイルを保存
+    try:
+        with open(html_file_path, "w", encoding="utf-8") as html_file:
+            html_file.write(html_content)
+        print(f"HTMLファイル更新完了: {html_file_path}")
+        logger.info(f"HTMLファイル更新完了: {html_file_path}")
+    except Exception as e:
+        print(f"[ERROR] HTMLファイルの保存に失敗しました: {html_file_path} ({e})")
+        logger.error(f"HTMLファイル保存失敗: {html_file_path} ({e})")
+
+    return html_content
+
+
 def process_single_file(docx_file: str, file_index: int, total_files: int) -> List[str]:
     """
     単一のDOCXファイルを処理
@@ -67,6 +169,34 @@ def process_single_file(docx_file: str, file_index: int, total_files: int) -> Li
     print(f"出力ディレクトリ: {output_dir}")
     logger.info(f"ファイル処理開始: {file_name} (出力ディレクトリ: {output_dir})")
 
+    # DOCXから画像名抽出
+    image_names = docx_parser.extract_image_names_from_docx(docx_file)
+
+    # HTML画像名置き換え処理
+    # HTML_DIRにファイル名と同じ名前のHTMLファイルがあれば、そのhtmlファイルを読み込む
+    html_file_path = os.path.join(config.HTML_DIR, f"{file_name_without_ext}.html")
+    html_content = None
+
+    if os.path.exists(html_file_path):
+        print(f"HTMLファイル発見: {html_file_path} を読み込みます")
+        logger.info(f"HTMLファイル発見: {html_file_path} を読み込み")
+        try:
+            with open(html_file_path, "r", encoding="utf-8") as html_file:
+                html_content = html_file.read()
+        except Exception as e:
+            print(f"[ERROR] HTMLファイルの読み込みに失敗しました: {html_file_path} ({e})")
+            logger.error(f"HTMLファイルの読み込み失敗: {html_file_path} ({e})")
+    else:
+        print(f"HTMLファイル未発見: {html_file_path}")
+        logger.info(f"HTMLファイル未発見: {html_file_path}")
+
+    # HTML画像名置き換え処理実行
+    if html_content and image_names:
+        print("=== HTML画像名置き換え処理開始 ===")
+        html_content = replace_html_image_names(html_content, image_names, html_file_path, logger)
+
+
+    # 画像変換処理
     # 出力ディレクトリが既に存在する場合はスキップ
     if os.path.exists(output_dir):
         print(f"[SKIP] 出力ディレクトリが既に存在するため、{file_name} の処理をスキップします")
@@ -76,10 +206,6 @@ def process_single_file(docx_file: str, file_index: int, total_files: int) -> Li
     # ファイル専用の出力ディレクトリを作成
     os.makedirs(output_dir, exist_ok=True)
 
-    # DOCXから画像名抽出
-    image_names = docx_parser.extract_image_names_from_docx(docx_file)
-
-    # 画像変換処理
     print("=== 画像変換処理開始 ===")
     converted_images = []
 
@@ -91,13 +217,9 @@ def process_single_file(docx_file: str, file_index: int, total_files: int) -> Li
         print(f"処理対象: row_index={row_text}, image_name={image_name}")
 
         # コード抽出
-        match = re.match(config.CODE_PATTERN, row_text)
-        if not match:
-            print(f"  [WARN] コード抽出失敗: {row_text}")
-            logger.warning(f"コード抽出失敗: {row_text}")
+        key = extract_code_from_row_index(row_text, logger)
+        if not key:
             continue
-
-        key = match.group(1)
         if key not in config.WIDTH_MAP:
             print(f"  [WARN] {key} の幅未定義。スキップ: {image_name}")
             logger.warning(f"幅未定義: {key} - スキップ: {image_name}")

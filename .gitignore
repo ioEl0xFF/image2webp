@@ -6,6 +6,9 @@
 # Word文書ファイル
 *.docx
 
+# HTMLファイル
+*.html
+
 # ログ
 converted_images.txt
 all_converted_images.txt
