@@ -10,6 +10,8 @@ from docx import Document
 from typing import List, Dict
 import config
 
+import image_utils
+
 
 def extract_image_names_from_docx(docx_file: str) -> List[Dict[str, str]]:
     """
@@ -84,7 +86,7 @@ def extract_image_names_from_docx(docx_file: str) -> List[Dict[str, str]]:
                 additional_matches.append(new_name)
 
             # imageディレクトリに画像が存在するか確認(拡張子は無視)
-            if os.path.exists(f"{config.IMAGES_DIR}/{image_name}.*"):
+            if image_utils.find_input_image(image_name):
                 additional_matches.append(image_name)
 
         if additional_matches:
