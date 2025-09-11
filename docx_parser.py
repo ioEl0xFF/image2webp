@@ -43,32 +43,44 @@ def extract_image_names_from_docx(docx_file: str) -> List[Dict[str, str]]:
 
     print("=== テーブル読み込み開始 ===")
 
+    # 各テーブルを順番に処理
     for table_index, table in enumerate(doc.tables, start=1):
+        # テーブルの最初の行の左端セル（0番目）から画像コードを取得
+        # 例: COMFRPTC09, COMFRPTC12 など
         left_text = table.rows[0].cells[0].text.strip().replace("\n", "") if len(table.rows) > 0 else ""
-        print(f"[テーブル{table_index}] 左セル: {left_text}")
+        print(f"[テーブル{table_index}] 左セル（画像コード）: {left_text}")
 
+        # テーブルの各行を処理
         for row_index, row in enumerate(table.rows, start=1):
-            right_text = row.cells[1].text if len(row.cells) > 1 else ""
-            for line in right_text.splitlines():
-                line = line.strip()
-                if not line:
-                    continue
-                print(f"  行{row_index} 右セル: {line}")
+            # 各行のすべてのセルを処理（2列でも3列でも対応）
+            for cell_index, cell in enumerate(row.cells):
+                cell_text = cell.text
 
-                matches = re.findall(config.IMAGE_PATTERN, line)
-                if matches:
-                    print(f"    マッチ: {matches}")
+                # セル内のテキストを改行で分割して1行ずつ処理
+                for line in cell_text.splitlines():
+                    line = line.strip()
+                    if not line:  # 空行はスキップ
+                        continue
 
-                for match in matches:
-                    # matchはタプルなので、空でない最初の要素を取得
-                    image_name = next((m for m in match if m), "").strip()
-                    if image_name:  # 空でない場合のみ追加
-                        image_names.append({
-                            "file_name": file_name,
-                            "output_dir": output_dir,
-                            "row_index": left_text,
-                            "image_name": image_name
-                        })
+                    print(f"  行{row_index} 列{cell_index + 1}: {line}")
+
+                    # 正規表現パターンで画像名を検索
+                    # 例: ＜画像＞sample-image-01, 画像名：sample-image-02 など
+                    matches = re.findall(config.IMAGE_PATTERN, line)
+                    if matches:
+                        print(f"    マッチ: {matches}")
+
+                    # マッチした画像名を1つずつ処理
+                    for match in matches:
+                        # matchはタプルなので、空でない最初の要素を取得
+                        image_name = next((m for m in match if m), "").strip()
+                        if image_name:  # 空でない場合のみ追加
+                            image_names.append({
+                                "file_name": file_name,           # DOCXファイル名
+                                "output_dir": output_dir,         # 出力先ディレクトリ
+                                "row_index": left_text,           # 画像コード（左セル）
+                                "image_name": image_name          # 抽出された画像名
+                            })
 
     # THUMBNAILの画像名を追加
     if image_names:
