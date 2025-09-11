@@ -43,6 +43,17 @@ def setup_logging():
     # ロガーを取得
     logger = logging.getLogger(__name__)
     logger.info("ログ設定を初期化しました")
+
+    # 存在しない画像記録ファイルを初期化（空ファイルを作成）
+    missing_images_file = os.path.join(config.LOG_DIR, "missing_images.txt")
+    try:
+        with open(missing_images_file, "w", encoding="utf-8") as f:
+            f.write("# 存在しない画像ファイル一覧\n")
+            f.write("# 形式: DOCXファイル名: 画像名\n\n")
+        logger.info("存在しない画像記録ファイルを初期化しました")
+    except Exception as e:
+        logger.error(f"存在しない画像記録ファイルの初期化に失敗: {e}")
+
     return logger
 
 
@@ -64,6 +75,27 @@ def extract_code_from_row_index(row_index: str, logger) -> str:
         return None
 
     return code_match.group(1)
+
+
+def record_missing_image(image_name: str, docx_file_name: str, logger) -> None:
+    """
+    存在しない画像名をファイルに記録する
+
+    Args:
+        image_name: 存在しない画像名
+        docx_file_name: DOCXファイル名（拡張子なし）
+        logger: ロガー
+    """
+    missing_images_file = os.path.join(config.LOG_DIR, "missing_images.txt")
+
+    try:
+        # ファイルに追記（存在しない場合は新規作成）
+        with open(missing_images_file, "a", encoding="utf-8") as f:
+            f.write(f"{docx_file_name}: {image_name}\n")
+
+        logger.info(f"存在しない画像を記録: {image_name} (ファイル: {docx_file_name})")
+    except Exception as e:
+        logger.error(f"存在しない画像の記録に失敗: {image_name} - {e}")
 
 
 def replace_html_image_names(html_content: str, image_names: List[Dict[str, str]], html_file_path: str, logger) -> str:
@@ -197,16 +229,11 @@ def process_single_file(docx_file: str, file_index: int, total_files: int) -> Li
 
 
     # 画像変換処理
-    # 出力ディレクトリが既に存在する場合はスキップ
-    if os.path.exists(output_dir):
-        print(f"[SKIP] 出力ディレクトリが既に存在するため、{file_name} の処理をスキップします")
-        logger.info(f"スキップ: {file_name} - 出力ディレクトリが既に存在")
-        return []
+    print("=== 画像変換処理開始 ===")
 
-    # ファイル専用の出力ディレクトリを作成
+    # ファイル専用の出力ディレクトリを作成します。
     os.makedirs(output_dir, exist_ok=True)
 
-    print("=== 画像変換処理開始 ===")
     converted_images = []
 
     for record in image_names:
@@ -232,17 +259,21 @@ def process_single_file(docx_file: str, file_index: int, total_files: int) -> Li
         if not input_file:
             print(f"  [ERROR] 入力ファイルが存在しません: {image_name} (jpg/png/webp)")
             logger.error(f"入力ファイルが存在しません: {image_name}")
+            # 存在しない画像名をファイルに記録
+            record_missing_image(image_name, file_name_without_ext, logger)
             continue
 
         print(f"  入力ファイル発見: {input_file}")
 
         # 幅ごとにWebP変換（元画像がWebPの場合はリサイズのみ）
         for size in sizes:
-            if row_text == "THUMBNAIL":
-                # THUMBNAILの場合は、画像名の末尾にサイズを記載しない
-                output_file = f"{output_dir}/{image_name}.webp"
-            else:
-                output_file = f"{output_dir}/{image_name}{size[0]}.webp"
+            output_file = f"{output_dir}/{image_name}{size[0]}.webp"
+
+            # 出力ファイルが既に存在する場合はスキップ
+            if os.path.exists(output_file):
+                print(f"  → 出力ファイルが既に存在するため、{image_name} を {size}px 幅で WebP に変換しません")
+                logger.info(f"スキップ: {image_name} - {size}px - 出力ファイルが既に存在")
+                continue
 
             print(f"  → 変換開始: {input_file} → {output_file} (width={size[0]} height={size[1]})")
 
@@ -337,6 +368,21 @@ def main():
 
     print("\n=== 全ファイル処理完了 ===")
     logger.info(f"全ファイル処理完了 - 総変換画像数: {len(all_converted_images)}")
+
+    # 存在しない画像の件数を表示
+    missing_images_file = os.path.join(config.LOG_DIR, "missing_images.txt")
+    if os.path.exists(missing_images_file):
+        try:
+            with open(missing_images_file, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+                # コメント行を除く
+                missing_count = len([line for line in lines if not line.strip().startswith("#") and line.strip()])
+                if missing_count > 0:
+                    print(f"存在しない画像ファイル数: {missing_count}")
+                    print(f"詳細は {missing_images_file} を確認してください")
+                    logger.info(f"存在しない画像ファイル数: {missing_count}")
+        except Exception as e:
+            logger.error(f"存在しない画像ファイル数の取得に失敗: {e}")
 
     # 結果保存
     save_results(all_image_names, all_converted_images)

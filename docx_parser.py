@@ -60,12 +60,15 @@ def extract_image_names_from_docx(docx_file: str) -> List[Dict[str, str]]:
                     print(f"    マッチ: {matches}")
 
                 for match in matches:
-                    image_names.append({
-                        "file_name": file_name,
-                        "output_dir": output_dir,
-                        "row_index": left_text,
-                        "image_name": match.strip()
-                    })
+                    # matchはタプルなので、空でない最初の要素を取得
+                    image_name = next((m for m in match if m), "").strip()
+                    if image_name:  # 空でない場合のみ追加
+                        image_names.append({
+                            "file_name": file_name,
+                            "output_dir": output_dir,
+                            "row_index": left_text,
+                            "image_name": image_name
+                        })
 
     # THUMBNAILの画像名を追加
     if image_names:
@@ -86,7 +89,7 @@ def extract_image_names_from_docx(docx_file: str) -> List[Dict[str, str]]:
 
             # imageディレクトリに画像が存在するか確認(拡張子は無視)
             if image_utils.find_input_image(new_name):
-                additional_matches.append(image_name)
+                additional_matches.append(new_name)
 
         if additional_matches:
             print(f"追加された画像名: {additional_matches}")

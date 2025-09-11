@@ -9,6 +9,9 @@
 # HTMLファイル
 *.html
 
+# zipファイル
+*.zip
+
 # ログ
 converted_images.txt
 all_converted_images.txt
