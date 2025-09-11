@@ -140,7 +140,7 @@ def replace_html_image_names(html_content: str, image_names: List[Dict[str, str]
 
         for i, size in enumerate(replace_order):
             # 検索パターン: 画像名 + 拡張子（jpg, png, webp等）
-            pattern = rf'\b{re.escape(image_name)}\.(jpg|jpeg|png|webp|JPG|JPEG|PNG|WEBP)\b'
+            pattern = rf'\b{re.escape(image_name)}\d*\.(jpg|jpeg|png|webp|JPG|JPEG|PNG|WEBP)\b'
 
             # 現在の位置から検索
             match = re.search(pattern, current_content[search_start:], re.IGNORECASE)
