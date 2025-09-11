@@ -153,6 +153,11 @@ def replace_html_image_names(html_content: str, image_names: List[Dict[str, str]
                 # 置換後のファイル名
                 new_filename = f"{image_name}{size}.webp"
 
+                if new_filename == match.group():
+                    print(f"    置換 {i+1}/{len(replace_order)}: {match.group()} → {new_filename} (同じファイル名のためスキップ)")
+                    logger.info(f"HTML画像名置換: {match.group()} → {new_filename} (同じファイル名のためスキップ)")
+                    continue
+
                 print(f"    置換 {i+1}/{len(replace_order)}: {match.group()} → {new_filename}")
                 logger.info(f"HTML画像名置換: {match.group()} → {new_filename}")
 
