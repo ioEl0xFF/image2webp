@@ -9,7 +9,9 @@ Word文書内のテーブルから画像名を自動抽出し、複数サイズ�
 - 🔍 **自動画像名抽出**: DOCXファイル内のテーブルから画像名を自動検出
 - 🖼️ **複数サイズ変換**: 設定に基づいて複数のサイズでWebP画像を生成
 - 📐 **アスペクト比保持**: 元画像の比率を維持しながらリサイズ
-- 🔄 **HTML自動置換**: HTMLファイル内の画像名をWebP形式に自動置換
+- 🔄 **メディアクエリベースHTML置換**: HTMLのメディアクエリに基づいて最適な画像サイズを自動選択
+- 🎯 **レスポンシブ対応**: 画面サイズと解像度に応じた画像サイズの自動判定
+- 🎠 **カーセル判定**: COMFRPTC12専用のカーセル/通常版判定機能
 - 📊 **バッチ処理**: 複数のDOCXファイルを一括処理
 - 📝 **詳細ログ**: 処理状況を詳細に記録
 
@@ -57,6 +59,8 @@ python main.py
 - `＜画像名＞image-name-02`
 - `＜画像1＞image-name-03`
 - `＜画像（補足）＞image-name-04`
+- `画像名：image-name-05` (全角コロン)
+- `画像名:image-name-06` (半角コロン)
 
 ### 設定カスタマイズ
 
@@ -66,17 +70,24 @@ python main.py
 # 画像サイズ設定
 WIDTH_MAP = {
     "COMFRPTC09": [[1800, 1200], [1200, 800], [900, 600], [500, 333]],
+    "COMFRPTC12": [[1800, 1200], [1200, 800], [900, 600], [500, 333]],
     "GSTFRPTA15": [[900, 0], [500, 0]],  # 高さ0はアスペクト比保持
 }
 
-# HTML画像名置換順序
-HTML_IMAGE_REPLACE_ORDER = {
-    "COMFRPTC09": [1800, 1200, 900, 500],
-    "GSTFRPTA15": [900, 500],
+# メディアクエリベースのサイズマッピング
+MIN_WIDTH_SIZE_MAP = {
+    "COMFRPTC12": {
+        1562: [1800, 900],  # 複数サイズ対応（カーセル/通常版）
+        1041: [1200, 900],  # 複数サイズ対応（カーセル/通常版）
+        781: 900,
+        768: 500,
+        "source_default": 900,
+        "img_default": 500
+    }
 }
 
 # WebP品質設定
-WEBP_QUALITY = 85
+WEBP_QUALITY = 100
 ```
 
 ## 📁 出力構造
@@ -97,22 +108,43 @@ output/
 
 1. **自動検索**: `html/`ディレクトリでDOCXファイル名と同じHTMLファイルを検索
 2. **画像名抽出**: DOCXから抽出した画像名情報を取得
-3. **自動置換**: HTML内の画像ファイル名をWebP形式に置換
-4. **ファイル更新**: 置換後のHTMLファイルを保存
+3. **メディアクエリ解析**: HTMLの`<source>`タグのメディアクエリを解析
+4. **レスポンシブ対応**: 画面サイズと解像度に応じて最適な画像サイズを選択
+5. **自動置換**: HTML内の画像ファイル名をWebP形式に置換
+6. **ファイル更新**: 置換後のHTMLファイルを保存
 
-### 置換例
+### メディアクエリベース置換
+
+**対応コード**: COMFRPTC12, COMFRPTC09, COMFRPTC14, COMFRPTC13, COMFRPTC34, COMFRPTC15, COMFRPTC23, COMFRPTC17, COMFRPTC21, GSTFRPTA15, COMFRPTC03, COMFRPTC30, THUMBNAIL
+
+**置換例:**
 
 **置換前:**
 ```html
-<img src="sample-image-01.jpg" alt="サンプル画像">
-<img src="sample-image-02.png" alt="サンプル画像2">
+<source media="(min-width: 1562px) and (min-resolution: 2dppx)"
+        data-srcset="sample-image-01.jpg">
+<img data-src="sample-image-01.jpg" alt="サンプル画像">
 ```
 
-**置換後（COMFRPTC09設定の場合）:**
+**置換後（COMFRPTC12設定の場合）:**
 ```html
-<img src="sample-image-011800.webp" alt="サンプル画像">
-<img src="sample-image-021200.webp" alt="サンプル画像2">
+<source media="(min-width: 1562px) and (min-resolution: 2dppx)"
+        data-srcset="sample-image-011800.webp">  <!-- カーセル版の場合 -->
+<img data-src="sample-image-01500.webp" alt="サンプル画像">
 ```
+
+### カーセル判定機能（COMFRPTC12専用）
+
+COMFRPTC12では、カーセル版と通常版で異なる画像サイズを使用します：
+
+- **カーセル版**: 大きいサイズ（1800px, 1200px）
+- **通常版**: 小さいサイズ（900px）
+
+**判定ロジック:**
+1. 画像タグの位置から上方向に最大50行まで探索
+2. `_carousel`が見つかった場合 → カーセル版
+3. `mCommonsectionImgitem`が見つかった場合 → 通常版
+4. 50行探しても見つからない場合 → 通常版
 
 ## 🛠️ トラブルシューティング
 
@@ -125,6 +157,8 @@ output/
 | 変換に失敗する | 画像ファイルが破損していないか、対応形式か確認 |
 | 再変換したい | `output/`内の対象フォルダを削除してから再実行 |
 | HTML置換が動作しない | HTMLファイル名がDOCXファイル名と一致しているか確認 |
+| メディアクエリベース置換が動作しない | コードがMIN_WIDTH_SIZE_MAPに定義されているか確認 |
+| カーセル判定が正しく動作しない | HTML内に`_carousel`または`mCommonsectionImgitem`が含まれているか確認 |
 
 ## 📊 対応形式
 
@@ -158,6 +192,10 @@ output/
 - **v1.2**: 複数サイズ対応
 - **v1.3**: アスペクト比保持機能
 - **v1.4**: HTML画像名置換機能追加
+- **v1.5**: メディアクエリベースHTML置換機能追加
+- **v1.6**: 画像名パターン拡張（半角コロン対応）
+- **v1.7**: COMFRPTC12専用カーセル判定機能追加
+- **v1.8**: 従来の順次置換処理を削除、メディアクエリベース処理に統一
 
 ## 🤝 貢献
 

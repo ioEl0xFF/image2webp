@@ -98,6 +98,85 @@ def record_missing_image(image_name: str, docx_file_name: str, logger) -> None:
         logger.error(f"存在しない画像の記録に失敗: {image_name} - {e}")
 
 
+def get_image_size_from_media_query(media_query: str, code: str, tag_type: str = "source", html_context: str = "", html_content: str = "", tag_position: int = 0) -> int:
+    """
+    メディアクエリから適切な画像サイズを取得する（クラス名考慮）
+
+    Args:
+        media_query: メディアクエリ文字列
+        code: コード（COMFRPTC12など）
+        tag_type: タグの種類（"source" または "img"）
+        html_context: HTMLコンテキスト（クラス名など）
+        html_content: HTMLファイルの内容（COMFRPTC12のカーセル判定用）
+        tag_position: タグの位置（COMFRPTC12のカーセル判定用）
+
+    Returns:
+        画像サイズ（ピクセル）
+    """
+    if code not in config.MIN_WIDTH_SIZE_MAP:
+        return None
+
+    size_map = config.MIN_WIDTH_SIZE_MAP[code]
+
+    # メディアクエリからmin-widthの値を抽出
+    width_match = re.search(r'\(min-width:\s*(\d+)px\)', media_query)
+    if not width_match:
+        # メディアクエリがない場合はデフォルトサイズを返す
+        default_key = f"{tag_type}_default"
+        return size_map.get(default_key, 500)
+
+    width = int(width_match.group(1))
+
+    # 解像度条件をチェック
+    has_2dppx = 'min-resolution:2dppx' in media_query
+
+    # 複数サイズ対応の場合は、解像度条件とクラス名に応じて選択
+    if width in size_map:
+        size_value = size_map[width]
+
+        if isinstance(size_value, list):
+            # 複数サイズがある場合
+            if has_2dppx:
+                # 高解像度の場合
+                if code == "COMFRPTC12" and (width == 1562 or width == 1041):
+                    # COMFRPTC12の1562pxまたは1041pxの特別処理
+                    if html_content and tag_position > 0:
+                        # 新しいカーセル判定ロジックを使用
+                        is_carousel = is_carousel_for_comfrptc12(html_content, tag_position)
+                    else:
+                        # フォールバック: 従来の方法
+                        is_carousel = "_carousel" in html_context
+
+                    if is_carousel:
+                        # カルーセルの場合は大きいサイズ（1800または1200）
+                        return max(size_value)
+                    else:
+                        # 通常表示の場合は小さいサイズ（900）
+                        return min(size_value)
+                else:
+                    # その他の場合は大きいサイズを選択
+                    return max(size_value)
+            else:
+                # 通常解像度の場合は小さいサイズを選択
+                return min(size_value)
+        else:
+            # 単一サイズの場合
+            return size_value
+
+    # COMFRPTC23の特別処理：min-widthがない場合の判別
+    if code == "COMFRPTC23" and not width_match:
+        if has_2dppx:
+            # (min-resolution: 2dppx) のみの場合 → 240
+            return 240
+        else:
+            # 条件なしの場合 → 120
+            return 120
+
+    # 該当するmin-widthがない場合はデフォルトサイズを返す
+    default_key = f"{tag_type}_default"
+    return size_map.get(default_key, 500)
+
+
 def replace_html_image_names(html_content: str, image_names: List[Dict[str, str]], html_file_path: str, logger) -> str:
     """
     HTMLファイル内の画像名を置き換える
@@ -125,52 +204,15 @@ def replace_html_image_names(html_content: str, image_names: List[Dict[str, str]
         if not code:
             continue
 
-        # 抽出したコードからHTML_IMAGE_REPLACE_ORDERの要素を取得
-        if code not in config.HTML_IMAGE_REPLACE_ORDER:
-            print(f"  [WARN] {code} の置き換え順が未定義。スキップ: {image_name}")
-            logger.warning(f"置き換え順未定義: {code} - スキップ: {image_name}")
+        # メディアクエリ置換が可能な場合は実行
+        if code in config.MIN_WIDTH_SIZE_MAP:
+            print(f"  {code}のメディアクエリベース置換を実行")
+            html_content = replace_html_image_names_by_media_query(html_content, image_name, code, logger)
+        else:
+            print(f"  {code}のメディアクエリベース置換を実行できません。スキップ: {image_name}")
+            logger.warning(f"メディアクエリベース置換できません: {code} - スキップ: {image_name}")
             continue
 
-        replace_order = config.HTML_IMAGE_REPLACE_ORDER[code]
-        print(f"  置き換え順: {replace_order}")
-
-        # HTMLファイル内でimage_nameと一致するファイル名を検索・置換
-        current_content = html_content
-        search_start = 0
-
-        for i, size in enumerate(replace_order):
-            # 検索パターン: 画像名 + 拡張子（jpg, png, webp等）
-            pattern = rf'\b{re.escape(image_name)}\d*\.(jpg|jpeg|png|webp|JPG|JPEG|PNG|WEBP)\b'
-
-            # 現在の位置から検索
-            match = re.search(pattern, current_content[search_start:], re.IGNORECASE)
-
-            if match:
-                # マッチした位置を全体の位置に変換
-                match_start = search_start + match.start()
-                match_end = search_start + match.end()
-
-                # 置換後のファイル名
-                new_filename = f"{image_name}{size}.webp"
-
-                if new_filename == match.group():
-                    print(f"    置換 {i+1}/{len(replace_order)}: {match.group()} → {new_filename} (同じファイル名のためスキップ)")
-                    logger.info(f"HTML画像名置換: {match.group()} → {new_filename} (同じファイル名のためスキップ)")
-                    continue
-
-                print(f"    置換 {i+1}/{len(replace_order)}: {match.group()} → {new_filename}")
-                logger.info(f"HTML画像名置換: {match.group()} → {new_filename}")
-
-                # 置換実行
-                current_content = current_content[:match_start] + new_filename + current_content[match_end:]
-
-                # 次の検索開始位置を更新（置換後の位置から）
-                search_start = match_start + len(new_filename)
-            else:
-                print(f"    [WARN] 置換 {i+1}/{len(replace_order)}: {image_name} のマッチが見つかりません")
-                logger.warning(f"HTML画像名マッチなし: {image_name} (置換 {i+1}/{len(replace_order)})")
-
-        html_content = current_content
 
     # 置換後のHTMLファイルを保存
     try:
@@ -181,6 +223,192 @@ def replace_html_image_names(html_content: str, image_names: List[Dict[str, str]
     except Exception as e:
         print(f"[ERROR] HTMLファイルの保存に失敗しました: {html_file_path} ({e})")
         logger.error(f"HTMLファイル保存失敗: {html_file_path} ({e})")
+
+    return html_content
+
+
+def get_html_context_for_image(html_content: str, image_name: str, tag_position: int) -> str:
+    """
+    画像タグの周辺のHTMLコンテキスト（クラス名など）を取得する
+
+    Args:
+        html_content: HTMLファイルの内容
+        image_name: 画像名
+        tag_position: タグの位置
+
+    Returns:
+        HTMLコンテキスト文字列
+    """
+    # タグの前後200文字を取得してコンテキストを分析
+    start = max(0, tag_position - 200)
+    end = min(len(html_content), tag_position + 200)
+    context = html_content[start:end]
+
+    return context
+
+
+def is_carousel_for_comfrptc12(html_content: str, tag_position: int) -> bool:
+    """
+    COMFRPTC12専用のカーセル判定を行う
+
+    Args:
+        html_content: HTMLファイルの内容
+        tag_position: タグの位置
+
+    Returns:
+        True: カーセル版, False: 通常版
+    """
+    # ファイル名が見つかった行から上に順番に探索
+    lines = html_content[:tag_position].split('\n')
+
+    # 後ろから50行まで探索
+    search_lines = lines[-50:] if len(lines) >= 50 else lines
+
+    for line in reversed(search_lines):
+        # "_carousel"が見つかった場合はカーセル版
+        if "_carousel" in line:
+            return True
+        # "mCommonsectionImgitem"が見つかった場合は通常版
+        if "mCommonsectionImgitem" in line:
+            return False
+
+    # 50行探しても見つからない場合は通常版
+    return False
+
+
+def replace_html_image_names_by_media_query(html_content: str, image_name: str, code: str, logger) -> str:
+    """
+    メディアクエリに基づいてHTMLファイル内の画像名を置き換える（クラス名考慮）
+
+    Args:
+        html_content: HTMLファイルの内容
+        image_name: 画像名
+        code: コード（COMFRPTC12など）
+        logger: ロガー
+
+    Returns:
+        置き換え後のHTMLコンテンツ
+    """
+    # <source>タグのパターンを検索
+    source_pattern = rf'<source[^>]*data-srcset="[^"]*{re.escape(image_name)}[^"]*"[^>]*>'
+
+    # 各<source>タグを処理
+    def replace_source_tag(match):
+        source_tag = match.group(0)
+        tag_position = match.start()
+
+        # HTMLコンテキストを取得
+        html_context = get_html_context_for_image(html_content, image_name, tag_position)
+
+        # メディアクエリを抽出
+        media_match = re.search(r'media="([^"]*)"', source_tag)
+        if not media_match:
+            print(f"    [INFO] メディアクエリが見つかりません。source_defaultを適用: {source_tag[:100]}...")
+            # メディアクエリがない場合はsource_defaultを使用
+            media_query = ""
+        else:
+            media_query = media_match.group(1)
+
+        # 適切な画像サイズを取得（sourceタグ用 + HTMLコンテキスト考慮）
+        size = get_image_size_from_media_query(media_query, code, "source", html_context, html_content, tag_position)
+        if not size:
+            print(f"    [WARN] サイズが決定できません: {media_query}")
+            return source_tag
+
+        # 画像ファイル名を置換
+        new_filename = f"{image_name}{size}.webp"
+        new_source_tag = re.sub(
+            rf'{re.escape(image_name)}[^"]*\.(jpg|jpeg|png|webp|JPG|JPEG|PNG|WEBP)',
+            new_filename,
+            source_tag,
+            flags=re.IGNORECASE
+        )
+
+        # クラス名や判別理由の情報もログに出力
+        class_info = ""
+        if code == "COMFRPTC12":
+            # COMFRPTC12の場合は新しいカーセル判定ロジックを使用
+            is_carousel = is_carousel_for_comfrptc12(html_content, tag_position)
+            if is_carousel:
+                class_info = " (カルーセル)"
+            else:
+                class_info = " (通常表示)"
+        else:
+            # その他のコードは従来の方法
+            if "_carousel" in html_context:
+                class_info = " (カルーセル)"
+            elif "mCommonsectionImgitem" in html_context:
+                class_info = " (通常表示)"
+
+        # COMFRPTC12とCOMFRPTC23の特別な判別理由を追加
+        reason_info = ""
+        if code == "COMFRPTC12":
+            # メディアクエリからmin-widthの値を再抽出
+            width_match_log = re.search(r'\(min-width:\s*(\d+)px\)', media_query)
+            has_2dppx_log = 'min-resolution:2dppx' in media_query
+
+            if width_match_log and has_2dppx_log:
+                width_log = int(width_match_log.group(1))
+                is_carousel_log = is_carousel_for_comfrptc12(html_content, tag_position)
+                if width_log == 1562:
+                    if is_carousel_log:
+                        reason_info = " (カルーセル1800)"
+                    else:
+                        reason_info = " (通常表示900)"
+                elif width_log == 1041:
+                    if is_carousel_log:
+                        reason_info = " (カルーセル1200)"
+                    else:
+                        reason_info = " (通常表示900)"
+        elif code == "COMFRPTC23":
+            # メディアクエリからmin-widthの値を再抽出
+            width_match_log = re.search(r'\(min-width:\s*(\d+)px\)', media_query)
+            has_2dppx_log = 'min-resolution:2dppx' in media_query
+
+            if not width_match_log:
+                if has_2dppx_log:
+                    reason_info = " (解像度のみ240)"
+                else:
+                    reason_info = " (条件なし120)"
+            elif width_match_log and int(width_match_log.group(1)) == 1440 and has_2dppx_log:
+                reason_info = " (1440px+2dppx360)"
+
+        print(f"    メディアクエリ置換: {media_query} → {new_filename}{class_info}{reason_info}")
+        logger.info(f"メディアクエリ置換: {media_query} → {new_filename}{class_info}{reason_info}")
+
+        return new_source_tag
+
+    # <source>タグを置換
+    html_content = re.sub(source_pattern, replace_source_tag, html_content, flags=re.IGNORECASE)
+
+    # <img>タグも処理
+    img_pattern = rf'<img[^>]*data-src="[^"]*{re.escape(image_name)}[^"]*"[^>]*>'
+
+    def replace_img_tag(match):
+        img_tag = match.group(0)
+        tag_position = match.start()
+
+        # HTMLコンテキストを取得
+        html_context = get_html_context_for_image(html_content, image_name, tag_position)
+
+        # imgタグ用のデフォルトサイズを取得
+        default_size = get_image_size_from_media_query("", code, "img", html_context)
+        new_filename = f"{image_name}{default_size}.webp"
+
+        new_img_tag = re.sub(
+            rf'{re.escape(image_name)}[^"]*\.(jpg|jpeg|png|webp|JPG|JPEG|PNG|WEBP)',
+            new_filename,
+            img_tag,
+            flags=re.IGNORECASE
+        )
+
+        print(f"    IMGタグ置換: → {new_filename}")
+        logger.info(f"IMGタグ置換: → {new_filename}")
+
+        return new_img_tag
+
+    # <img>タグを置換
+    html_content = re.sub(img_pattern, replace_img_tag, html_content, flags=re.IGNORECASE)
 
     return html_content
 

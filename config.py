@@ -51,21 +51,89 @@ WIDTH_MAP = {
     "THUMBNAIL" : [[900, 600], [500, 333]],
 }
 
-# HTMLの画像置き換え順
-HTML_IMAGE_REPLACE_ORDER = {
-    "COMFRPTC09": [1800, 1200, 900, 500, 900, 900],
-    "COMFRPTC12": [1200, 900, 500, 900, 500],
-    "COMFRPTC14": [800, 600, 400, 400],
-    "COMFRPTC13": [1200, 900, 500, 900, 500],
-    "COMFRPTC34": [1800, 1200, 900, 500, 900],
-    "COMFRPTC15": [300, 150, 150],
-    "COMFRPTC23": [360, 240, 120, 120],
-    "COMFRPTC17": [900, 500, 500],
-    "COMFRPTC21": [900, 500, 900],
-    "GSTFRPTA15": [900, 500, 900],
-    "COMFRPTC03": [900, 500, 500],
-    "COMFRPTC30": [900, 500, 500],
+# min-widthとサイズのマッピング
+MIN_WIDTH_SIZE_MAP = {
+    "COMFRPTC09": {
+        2082: 900,
+        1562: 1800,
+        1388: 1200,
+        1041: 1200,
+        781: 900,
+        768: 500,
+        "source_default": 900,
+        "img_default": 900
+    },
+    "COMFRPTC12": {
+        1562: [1800, 900],  # 複数サイズ対応
+        1388: 1200,
+        1041: [1200, 900],  # 複数サイズ対応
+        781: 900,
+        768: 500,
+        "source_default": 900,
+        "img_default": 500
+    },
+    "COMFRPTC14": {
+        1388: 800,
+        1041: 600,
+        "source_default": 400,
+        "img_default": 400
+    },
+    "COMFRPTC13": {
+        1388: 1200,
+        1041: 900,
+        768: 500,
+        "source_default": 900,
+        "img_default": 500
+    },
+    "COMFRPTC34": {
+        1562: 1800,
+        1041: 1200,
+        781: 900,
+        768: 500,
+        "source_default": 900,
+        "img_default": 500
+    },
+    "COMFRPTC15": {
+        768: 300,
+        "source_default": 150,
+        "img_default": 150
+    },
+    "COMFRPTC23": {
+        1440: 360,
+        "source_default": 120,
+        "img_default": 120
+    },
+    "COMFRPTC17": {
+        "source_default": 500,
+        "img_default": 500
+    },
+    "COMFRPTC21": {
+        1562: 900,
+        768: 500,
+        "source_default": 900,
+        "img_default": 500
+    },
+    "GSTFRPTA15": {
+        1562: 900,
+        "source_default": 900,
+        "img_default": 500
+    },
+    "COMFRPTC03": {
+        768: 500,
+        "source_default": 500,
+        "img_default": 500
+    },
+    "COMFRPTC30": {
+        768: 500,
+        "source_default": 500,
+        "img_default": 500
+    },
+    "THUMBNAIL": {
+        "source_default": 500,
+        "img_default": 500
+    }
 }
+
 
 # 確認する拡張子
 SUPPORTED_EXTENSIONS = ["webp", "WEBP", "jpg", "png", "JPG", "PNG" ]
