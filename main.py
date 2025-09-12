@@ -324,22 +324,6 @@ def replace_html_image_names_by_media_query(html_content: str, image_name: str, 
             flags=re.IGNORECASE
         )
 
-        # クラス名や判別理由の情報もログに出力
-        class_info = ""
-        if code == "COMFRPTC12":
-            # COMFRPTC12の場合は新しいカーセル判定ロジックを使用
-            is_carousel = is_carousel_for_comfrptc12(html_content, tag_position)
-            if is_carousel:
-                class_info = " (カルーセル)"
-            else:
-                class_info = " (通常表示)"
-        else:
-            # その他のコードは従来の方法
-            if "_carousel" in html_context:
-                class_info = " (カルーセル)"
-            elif "mCommonsectionImgitem" in html_context:
-                class_info = " (通常表示)"
-
         # COMFRPTC12とCOMFRPTC23の特別な判別理由を追加
         reason_info = ""
         if code == "COMFRPTC12":
@@ -373,8 +357,8 @@ def replace_html_image_names_by_media_query(html_content: str, image_name: str, 
             elif width_match_log and int(width_match_log.group(1)) == 1440 and has_2dppx_log:
                 reason_info = " (1440px+2dppx360)"
 
-        print(f"    メディアクエリ置換: {media_query} → {new_filename}{class_info}{reason_info}")
-        logger.info(f"メディアクエリ置換: {media_query} → {new_filename}{class_info}{reason_info}")
+        print(f"    メディアクエリ置換: {media_query} → {new_filename}{reason_info}")
+        logger.info(f"メディアクエリ置換: {media_query} → {new_filename}{reason_info}")
 
         return new_source_tag
 
