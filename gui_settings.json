@@ -1,0 +1,7 @@
+{
+  "docx_dir": "/mnt/c/Users/t-yamakawa/source/repos/img2webp/docxs",
+  "images_dir": "/mnt/c/Users/t-yamakawa/source/repos/img2webp/images",
+  "html_dir": "/mnt/c/Users/t-yamakawa/source/repos/img2webp/html",
+  "output_dir": "/mnt/c/Users/t-yamakawa/source/repos/img2webp/output",
+  "webp_quality": 100
+}
