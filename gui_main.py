@@ -18,6 +18,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from src.gui_processor import ProcessorThread
 from src.config import WEBP_QUALITY, LOG_DIR
+from src.config_loader import config_loader
+from config_gui import ConfigEditorWindow
 
 
 class Img2WebpGUI:
@@ -56,10 +58,10 @@ class Img2WebpGUI:
     def _set_default_paths(self):
         """デフォルトパスを設定"""
         current_dir = Path.cwd()
-        self.docx_dir.set(str(current_dir / "docxs"))
-        self.images_dir.set(str(current_dir / "images"))
-        self.html_dir.set(str(current_dir / "html"))
-        self.output_dir.set(str(current_dir / "output"))
+        self.docx_dir.set(str(current_dir / config_loader.get("directories.docx_directory", "docxs")))
+        self.images_dir.set(str(current_dir / config_loader.get("directories.images_dir", "images")))
+        self.html_dir.set(str(current_dir / config_loader.get("directories.html_dir", "html")))
+        self.output_dir.set(str(current_dir / config_loader.get("directories.output_base_dir", "output")))
 
     def _create_widgets(self):
         """ウィジェットを作成"""
@@ -158,7 +160,10 @@ class Img2WebpGUI:
                   command=self._clear_log).grid(row=0, column=2, padx=(0, 10))
 
         ttk.Button(control_frame, text="設定保存",
-                  command=self._save_settings).grid(row=0, column=3)
+                  command=self._save_settings).grid(row=0, column=3, padx=(0, 10))
+        
+        ttk.Button(control_frame, text="詳細設定",
+                  command=self._open_config_editor).grid(row=0, column=4)
 
     def _create_log_section(self, parent):
         """ログ表示セクションを作成"""
@@ -357,17 +362,28 @@ class Img2WebpGUI:
 
     def _save_settings(self):
         """設定を保存"""
-        settings = {
-            "docx_dir": self.docx_dir.get(),
-            "images_dir": self.images_dir.get(),
-            "html_dir": self.html_dir.get(),
-            "output_dir": self.output_dir.get(),
-            "webp_quality": self.webp_quality.get()
-        }
-
         try:
+            # JSONコンフィグに保存
+            config_loader.set("directories.docx_directory", Path(self.docx_dir.get()).name)
+            config_loader.set("directories.images_dir", Path(self.images_dir.get()).name)
+            config_loader.set("directories.html_dir", Path(self.html_dir.get()).name)
+            config_loader.set("directories.output_base_dir", Path(self.output_dir.get()).name)
+            config_loader.set("image_processing.webp_quality", self.webp_quality.get())
+            
+            # 設定を保存
+            config_loader.save_config()
+            
+            # 後方互換性のためgui_settings.jsonも保存
+            settings = {
+                "docx_dir": self.docx_dir.get(),
+                "images_dir": self.images_dir.get(),
+                "html_dir": self.html_dir.get(),
+                "output_dir": self.output_dir.get(),
+                "webp_quality": self.webp_quality.get()
+            }
             with open("gui_settings.json", "w", encoding="utf-8") as f:
                 json.dump(settings, f, ensure_ascii=False, indent=2)
+                
             self._add_log("設定を保存しました", "success")
         except Exception as e:
             self._add_log(f"設定保存エラー: {e}", "error")
@@ -375,6 +391,10 @@ class Img2WebpGUI:
     def _load_settings(self):
         """設定を読み込み"""
         try:
+            # まずJSONコンフィグから読み込み
+            current_dir = Path.cwd()
+            
+            # 既存のgui_settings.jsonがあるかチェック（移行のため）
             if os.path.exists("gui_settings.json"):
                 with open("gui_settings.json", "r", encoding="utf-8") as f:
                     settings = json.load(f)
@@ -383,10 +403,38 @@ class Img2WebpGUI:
                 self.images_dir.set(settings.get("images_dir", self.images_dir.get()))
                 self.html_dir.set(settings.get("html_dir", self.html_dir.get()))
                 self.output_dir.set(settings.get("output_dir", self.output_dir.get()))
-                self.webp_quality.set(settings.get("webp_quality", WEBP_QUALITY))
+                self.webp_quality.set(settings.get("webp_quality", 
+                    config_loader.get("image_processing.webp_quality", WEBP_QUALITY)))
+            else:
+                # JSONコンフィグから読み込み
+                self.docx_dir.set(str(current_dir / config_loader.get("directories.docx_directory", "docxs")))
+                self.images_dir.set(str(current_dir / config_loader.get("directories.images_dir", "images")))
+                self.html_dir.set(str(current_dir / config_loader.get("directories.html_dir", "html")))
+                self.output_dir.set(str(current_dir / config_loader.get("directories.output_base_dir", "output")))
+                self.webp_quality.set(config_loader.get("image_processing.webp_quality", WEBP_QUALITY))
 
         except Exception as e:
             self._add_log(f"設定読み込みエラー: {e}", "warning")
+    
+    def _open_config_editor(self):
+        """設定編集ウィンドウを開く"""
+        try:
+            config_window = ConfigEditorWindow(self.root)
+            # ウィンドウが閉じられるまで待機
+            self.root.wait_window(config_window.window)
+            
+            # 設定が変更された可能性があるので、設定を再読み込み
+            config_loader.reload_config()
+            import src.config
+            src.config.reload_config()
+            
+            # GUIの設定値も更新
+            self._load_settings()
+            
+            self._add_log("設定画面を閉じました。設定を再読み込みしました", "info")
+            
+        except Exception as e:
+            self._add_log(f"設定画面エラー: {e}", "error")
 
 
 

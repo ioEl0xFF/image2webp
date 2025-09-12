@@ -1,151 +1,109 @@
 """
 設定ファイル
-画像変換処理で使用する定数やマッピングを定義
+JSONベースの設定管理システムを使用して、画像変換処理で使用する定数やマッピングを定義
 """
 
 import re
+from .config_loader import config_loader
+
+# JSONから設定値を読み込み、モジュール変数として公開
 
 # ディレクトリ設定
-DOCX_DIRECTORY = "docxs"
-OUTPUT_BASE_DIR = "output"
-IMAGES_DIR = "images"
-HTML_DIR = "html"
+DOCX_DIRECTORY = config_loader.get("directories.docx_directory", "docxs")
+OUTPUT_BASE_DIR = config_loader.get("directories.output_base_dir", "output")
+IMAGES_DIR = config_loader.get("directories.images_dir", "images")
+HTML_DIR = config_loader.get("directories.html_dir", "html")
 
 # 正規表現パターン
-#
-# ＜画像＞や＜画像名＞などの全角表記に加え、「画像名：sample-image-01」のような半角コロン区切り表記にも対応します。
-# 例: ＜画像＞sample-image-01
-#     ＜画像名＞sample-image-02
-#     画像名：sample-image-03
-#     画像名:sample-image-04
-#
-# - ＜画像...＞パターン: 従来通り全角括弧・補足も対応
-# - 画像名：...パターン: 「画像名：」または「画像名:」の直後に画像名（英数字・ハイフン・アンダースコア）を抽出
-#
-# どちらにもマッチするように正規表現を拡張しています。
-IMAGE_PATTERN = (
-    r"(?:"
-    r"[＜<〈]画像(?:名|\d*)?(?:（[^）]*）)?[＞>〉]\s*([a-zA-Z0-9\-_]+)"  # ＜画像＞系
-    r"|"
-    r"画像名[:：]\s*([a-zA-Z0-9\-_]+)"                      # 画像名：系（全角・半角コロン両対応）
-    r")"
-)
-
-# コード抽出正規表現（GSTにも対応）
-CODE_PATTERN = r"^(COMFRPTC\d+|GSTFRPTA\d+|THUMBNAIL)"
+IMAGE_PATTERN = config_loader.get("patterns.image_pattern", 
+    r"(?:[＜<〈]画像(?:名|\d*)?(?:（[^）]*）)?[＞>〉]\s*([a-zA-Z0-9\-_]+)|画像名[:：]\s*([a-zA-Z0-9\-_]+))")
+CODE_PATTERN = config_loader.get("patterns.code_pattern", r"^(COMFRPTC\d+|GSTFRPTA\d+|THUMBNAIL)")
 
 # 左セルコードと幅の対応
-WIDTH_MAP = {
-    "COMFRPTC09": [[1800, 1200], [1200, 800], [900, 600], [500, 333]],
-    "COMFRPTC12": [[1800, 1200], [1200, 800], [900, 600], [500, 333]],
-    "COMFRPTC14": [[800, 800], [600, 600], [400, 400]],
-    "COMFRPTC13": [[1200, 900], [900, 600], [500, 333]],
-    "COMFRPTC34": [[1800, 1200], [1200, 800], [900, 600], [500, 333]],
-    "COMFRPTC15": [[300, 300], [150, 150]],
-    "COMFRPTC23": [[360, 360], [240, 240], [120, 120]],
-    "COMFRPTC17": [[900, 600], [500, 333]],
-    "COMFRPTC21": [[900, 900], [500, 500]],
-    "GSTFRPTA15": [[900, 0], [500, 0]],
-    "COMFRPTC03": [[900, 0], [500, 0]],
-    "COMFRPTC30": [[900, 600], [500, 333]],
-    "THUMBNAIL" : [[900, 600], [500, 333]],
-}
+WIDTH_MAP = config_loader.get_width_map()
 
-# min-widthとサイズのマッピング
-MIN_WIDTH_SIZE_MAP = {
-    "COMFRPTC09": {
-        2082: 900,
-        1562: 1800,
-        1388: 1200,
-        1041: 1200,
-        781: 900,
-        768: 500,
-        "source_default": 900,
-        "img_default": 900
-    },
-    "COMFRPTC12": {
-        1562: [1800, 900],  # 複数サイズ対応
-        1388: 1200,
-        1041: [1200, 900],  # 複数サイズ対応
-        781: 900,
-        768: 500,
-        "source_default": 900,
-        "img_default": 500
-    },
-    "COMFRPTC14": {
-        1388: 800,
-        1041: 600,
-        "source_default": 400,
-        "img_default": 400
-    },
-    "COMFRPTC13": {
-        1388: 1200,
-        1041: 900,
-        768: 500,
-        "source_default": 900,
-        "img_default": 500
-    },
-    "COMFRPTC34": {
-        1562: 1800,
-        1041: 1200,
-        781: 900,
-        768: 500,
-        "source_default": 900,
-        "img_default": 500
-    },
-    "COMFRPTC15": {
-        768: 300,
-        "source_default": 150,
-        "img_default": 150
-    },
-    "COMFRPTC23": {
-        1440: 360,
-        "source_default": 120,
-        "img_default": 120
-    },
-    "COMFRPTC17": {
-        "source_default": 500,
-        "img_default": 500
-    },
-    "COMFRPTC21": {
-        1562: 900,
-        768: 500,
-        "source_default": 900,
-        "img_default": 500
-    },
-    "GSTFRPTA15": {
-        1562: 900,
-        "source_default": 900,
-        "img_default": 500
-    },
-    "COMFRPTC03": {
-        768: 500,
-        "source_default": 500,
-        "img_default": 500
-    },
-    "COMFRPTC30": {
-        768: 500,
-        "source_default": 500,
-        "img_default": 500
-    },
-    "THUMBNAIL": {
-        "source_default": 500,
-        "img_default": 500
-    }
-}
-
+# min-widthとサイズのマッピング（文字列キーを整数に変換）
+_min_width_map = config_loader.get_min_width_size_map()
+MIN_WIDTH_SIZE_MAP = {}
+for code, mapping in _min_width_map.items():
+    MIN_WIDTH_SIZE_MAP[code] = {}
+    for key, value in mapping.items():
+        if key in ["source_default", "img_default"]:
+            MIN_WIDTH_SIZE_MAP[code][key] = value
+        else:
+            # 文字列キーを整数に変換
+            try:
+                int_key = int(key)
+                MIN_WIDTH_SIZE_MAP[code][int_key] = value
+            except ValueError:
+                MIN_WIDTH_SIZE_MAP[code][key] = value
 
 # 確認する拡張子
-SUPPORTED_EXTENSIONS = ["webp", "WEBP", "jpg", "png", "JPG", "PNG" ]
+SUPPORTED_EXTENSIONS = config_loader.get("image_processing.supported_extensions", 
+    ["webp", "WEBP", "jpg", "png", "JPG", "PNG"])
 
 # WebP保存設定
-WEBP_QUALITY = 100
-WEBP_METHOD = 6
-WEBP_LOSSLESS = False
+WEBP_QUALITY = config_loader.get("image_processing.webp_quality", 100)
+WEBP_METHOD = config_loader.get("image_processing.webp_method", 6)
+WEBP_LOSSLESS = config_loader.get("image_processing.webp_lossless", True)
 
 # ログ設定
-LOG_DIR = ".logs"
-LOG_FILE = "LOG.log"
-LOG_LEVEL = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
-LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+LOG_DIR = config_loader.get("directories.log_dir", ".logs")
+LOG_FILE = config_loader.get("logging.log_file", "LOG.log")
+LOG_LEVEL = config_loader.get("logging.log_level", "INFO")
+LOG_FORMAT = config_loader.get("logging.log_format", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+LOG_DATE_FORMAT = config_loader.get("logging.log_date_format", "%Y-%m-%d %H:%M:%S")
+
+
+def reload_config():
+    """
+    設定を再読み込みしてモジュール変数を更新
+    GUI設定画面などから呼び出される
+    """
+    global DOCX_DIRECTORY, OUTPUT_BASE_DIR, IMAGES_DIR, HTML_DIR
+    global IMAGE_PATTERN, CODE_PATTERN, WIDTH_MAP, MIN_WIDTH_SIZE_MAP
+    global SUPPORTED_EXTENSIONS, WEBP_QUALITY, WEBP_METHOD, WEBP_LOSSLESS
+    global LOG_DIR, LOG_FILE, LOG_LEVEL, LOG_FORMAT, LOG_DATE_FORMAT
+    
+    # 設定を再読み込み
+    config_loader.reload_config()
+    
+    # モジュール変数を更新
+    DOCX_DIRECTORY = config_loader.get("directories.docx_directory", "docxs")
+    OUTPUT_BASE_DIR = config_loader.get("directories.output_base_dir", "output")
+    IMAGES_DIR = config_loader.get("directories.images_dir", "images")
+    HTML_DIR = config_loader.get("directories.html_dir", "html")
+    
+    IMAGE_PATTERN = config_loader.get("patterns.image_pattern", 
+        r"(?:[＜<〈]画像(?:名|\d*)?(?:（[^）]*）)?[＞>〉]\s*([a-zA-Z0-9\-_]+)|画像名[:：]\s*([a-zA-Z0-9\-_]+))")
+    CODE_PATTERN = config_loader.get("patterns.code_pattern", r"^(COMFRPTC\d+|GSTFRPTA\d+|THUMBNAIL)")
+    
+    WIDTH_MAP = config_loader.get_width_map()
+    
+    # MIN_WIDTH_SIZE_MAPの更新
+    _min_width_map = config_loader.get_min_width_size_map()
+    MIN_WIDTH_SIZE_MAP = {}
+    for code, mapping in _min_width_map.items():
+        MIN_WIDTH_SIZE_MAP[code] = {}
+        for key, value in mapping.items():
+            if key in ["source_default", "img_default"]:
+                MIN_WIDTH_SIZE_MAP[code][key] = value
+            else:
+                try:
+                    int_key = int(key)
+                    MIN_WIDTH_SIZE_MAP[code][int_key] = value
+                except ValueError:
+                    MIN_WIDTH_SIZE_MAP[code][key] = value
+    
+    SUPPORTED_EXTENSIONS = config_loader.get("image_processing.supported_extensions", 
+        ["webp", "WEBP", "jpg", "png", "JPG", "PNG"])
+    
+    WEBP_QUALITY = config_loader.get("image_processing.webp_quality", 100)
+    WEBP_METHOD = config_loader.get("image_processing.webp_method", 6)
+    WEBP_LOSSLESS = config_loader.get("image_processing.webp_lossless", True)
+    
+    LOG_DIR = config_loader.get("directories.log_dir", ".logs")
+    LOG_FILE = config_loader.get("logging.log_file", "LOG.log")
+    LOG_LEVEL = config_loader.get("logging.log_level", "INFO")
+    LOG_FORMAT = config_loader.get("logging.log_format", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    LOG_DATE_FORMAT = config_loader.get("logging.log_date_format", "%Y-%m-%d %H:%M:%S")

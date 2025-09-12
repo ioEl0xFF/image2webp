@@ -18,7 +18,8 @@ all_converted_images.txt
 image_names.json
 all_image_names.json
 
-main_backup.py
+# backup files
+*.backup
 
 # Python関連
 __pycache__/

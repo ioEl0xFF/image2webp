@@ -14,12 +14,12 @@ from pathlib import Path
 def clean_build_dirs():
     """ビルドディレクトリをクリーンアップ"""
     dirs_to_clean = ['build', 'dist', '__pycache__']
-    
+
     for dir_name in dirs_to_clean:
         if os.path.exists(dir_name):
             print(f"クリーンアップ中: {dir_name}")
             shutil.rmtree(dir_name)
-    
+
     # .spec ファイルも削除
     for spec_file in Path('.').glob('*.spec'):
         print(f"削除中: {spec_file}")
@@ -96,10 +96,10 @@ exe = EXE(
     version='version_info.txt' if os.path.exists('version_info.txt') else None,
 )
 '''
-    
+
     with open('img2webp.spec', 'w', encoding='utf-8') as f:
         f.write(spec_content)
-    
+
     print("PyInstaller .specファイルを作成しました: img2webp.spec")
 
 
@@ -144,15 +144,15 @@ StringFileInfo(
     StringStruct(u'OriginalFilename', u'img2webp.exe'),
     StringStruct(u'ProductName', u'img2webp'),
     StringStruct(u'ProductVersion', u'2.0.0.0')])
-  ]), 
+  ]),
 VarFileInfo([VarStruct(u'Translation', [1041, 1200])])
   ]
 )
 '''
-    
+
     with open('version_info.txt', 'w', encoding='utf-8') as f:
         f.write(version_info)
-    
+
     print("バージョン情報ファイルを作成しました: version_info.txt")
 
 
@@ -163,10 +163,10 @@ python-docx>=0.8.11
 Pillow>=8.0.0
 pyinstaller>=5.0.0
 '''
-    
+
     with open('requirements_build.txt', 'w', encoding='utf-8') as f:
         f.write(requirements)
-    
+
     print("ビルド用requirements.txtを作成しました: requirements_build.txt")
 
 
@@ -174,7 +174,7 @@ def install_build_dependencies():
     """ビルド用の依存関係をインストール"""
     print("ビルド用依存関係をインストール中...")
     try:
-        subprocess.run([sys.executable, '-m', 'pip', 'install', '-r', 'requirements_build.txt'], 
+        subprocess.run([sys.executable, '-m', 'pip', 'install', '-r', 'requirements_build.txt'],
                       check=True)
         print("依存関係のインストールが完了しました")
     except subprocess.CalledProcessError as e:
@@ -187,12 +187,17 @@ def build_executable():
     """実行ファイルをビルド"""
     print("実行ファイルをビルド中...")
     try:
-        subprocess.run([sys.executable, '-m', 'PyInstaller', 'img2webp.spec'], 
+        subprocess.run([sys.executable, '-m', 'PyInstaller', 'img2webp.spec'],
                       check=True)
         print("ビルドが完了しました")
-        
-        # ビルド結果の確認
-        exe_path = Path('dist/img2webp.exe')
+
+        # ビルド結果の確認（プラットフォームに応じて実行ファイル名を判定）
+        import platform
+        if platform.system() == "Windows":
+            exe_path = Path('dist/img2webp.exe')
+        else:
+            exe_path = Path('dist/img2webp')
+
         if exe_path.exists():
             size_mb = exe_path.stat().st_size / (1024 * 1024)
             print(f"実行ファイルが作成されました: {exe_path} ({size_mb:.1f} MB)")
@@ -208,23 +213,30 @@ def build_executable():
 def create_distribution_package():
     """配布用パッケージを作成"""
     print("配布用パッケージを作成中...")
-    
+
     # 配布用ディレクトリを作成
     dist_dir = Path('img2webp_distribution')
     if dist_dir.exists():
         shutil.rmtree(dist_dir)
     dist_dir.mkdir()
-    
-    # 実行ファイルをコピー
-    exe_src = Path('dist/img2webp.exe')
+
+    # 実行ファイルをコピー（プラットフォームに応じて実行ファイル名を判定）
+    import platform
+    if platform.system() == "Windows":
+        exe_src = Path('dist/img2webp.exe')
+        exe_dst = dist_dir / 'img2webp.exe'
+    else:
+        exe_src = Path('dist/img2webp')
+        exe_dst = dist_dir / 'img2webp'
+
     if exe_src.exists():
-        shutil.copy2(exe_src, dist_dir / 'img2webp.exe')
-    
+        shutil.copy2(exe_src, exe_dst)
+
     # サンプルディレクトリ構造を作成
     sample_dirs = ['docxs', 'images', 'html', 'output']
     for dir_name in sample_dirs:
         (dist_dir / dir_name).mkdir()
-    
+
     # README_GUI.mdを作成
     readme_content = '''# img2webp GUI版
 
@@ -264,47 +276,51 @@ img2webp_distribution/
 - **処理が終わらない**: 大きなファイルや大量のファイルを処理している場合は時間がかかります
 - **エラーが発生する**: ログエリアのエラーメッセージを確認し、ファイルパスや権限を確認してください
 '''
-    
+
     with open(dist_dir / 'README_GUI.md', 'w', encoding='utf-8') as f:
         f.write(readme_content)
-    
+
     print(f"配布用パッケージを作成しました: {dist_dir}")
 
 
 def main():
     """メイン処理"""
     print("=== img2webp GUI版 exe化スクリプト ===")
-    
+
     # 1. クリーンアップ
     print("\n1. ビルドディレクトリのクリーンアップ")
     clean_build_dirs()
-    
+
     # 2. 必要なファイルを作成
     print("\n2. 設定ファイルの作成")
     create_pyinstaller_spec()
     create_version_info()
     create_requirements_for_build()
-    
+
     # 3. 依存関係のインストール
     print("\n3. 依存関係のインストール")
     if not install_build_dependencies():
         print("依存関係のインストールに失敗したため、処理を中断します")
         return False
-    
+
     # 4. 実行ファイルのビルド
     print("\n4. 実行ファイルのビルド")
     if not build_executable():
         print("ビルドに失敗しました")
         return False
-    
+
     # 5. 配布用パッケージの作成
     print("\n5. 配布用パッケージの作成")
     create_distribution_package()
-    
+
     print("\n=== ビルド完了 ===")
-    print("配布用ファイル: img2webp_distribution/img2webp.exe")
+    import platform
+    if platform.system() == "Windows":
+        print("配布用ファイル: img2webp_distribution/img2webp.exe")
+    else:
+        print("配布用ファイル: img2webp_distribution/img2webp")
     print("配布用フォルダ: img2webp_distribution/")
-    
+
     return True
 
 
@@ -314,5 +330,5 @@ if __name__ == "__main__":
         print("\n✅ ビルドが成功しました！")
     else:
         print("\n❌ ビルドに失敗しました。")
-    
+
     input("\nEnterキーを押して終了...")
