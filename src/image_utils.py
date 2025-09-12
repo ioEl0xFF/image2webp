@@ -6,7 +6,7 @@
 from PIL import Image, ImageOps
 from typing import List, Tuple
 import logging
-import config
+from . import config
 
 
 def has_alpha(img: Image.Image) -> bool:
