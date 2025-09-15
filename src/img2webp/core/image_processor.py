@@ -12,8 +12,8 @@ from ..utils import image_utils
 from ..utils.exceptions import ImageFileError, ImageConversionError
 from ..utils.logger import record_missing_image
 from ..utils.error_handler import (
-    ErrorHandler, 
-    safe_conversion_operation, 
+    ErrorHandler,
+    safe_conversion_operation,
     validate_input,
     ValidationError
 )
@@ -21,7 +21,7 @@ from ..utils.error_handler import (
 
 class ImageProcessor:
     """画像変換処理を担当するクラス"""
-    
+
     def __init__(self):
         self._logger = logging.getLogger(__name__)
         self._error_handler = ErrorHandler(__name__)
@@ -29,17 +29,17 @@ class ImageProcessor:
         self._patterns_config = config_loader.get_patterns()
         self._is_cancelled = False
         self._cancel_callback = None
-    
+
     def set_cancel_callback(self, callback):
         """中断時のコールバック関数を設定"""
         self._cancel_callback = callback
-    
+
     def cancel_processing(self):
         """処理を中断"""
         self._is_cancelled = True
         if self._cancel_callback:
             self._cancel_callback("画像処理が中断されました")
-    
+
     def _check_cancellation(self) -> bool:
         """中断チェック"""
         if self._is_cancelled:
@@ -47,35 +47,33 @@ class ImageProcessor:
                 self._cancel_callback("処理中断が検出されました")
             return True
         return False
-    
+
     def process_images(self, image_names: List[Dict[str, str]], file_info: Dict[str, str]) -> List[str]:
         """
         画像変換処理を実行
-        
+
         Args:
             image_names: 画像名情報のリスト
             file_info: ファイル情報
-            
+
         Returns:
             変換された画像ファイルのパスのリスト
         """
         try:
             validate_input(image_names, lambda x: isinstance(x, list), "画像名情報は配列である必要があります")
-            validate_input(file_info, lambda x: isinstance(x, dict) and 'file_name' in x, 
+            validate_input(file_info, lambda x: isinstance(x, dict) and 'file_name' in x,
                           "ファイル情報が不正です")
-            
-            print("=== 画像変換処理開始 ===")
+
             self._logger.info(f"画像変換処理開始: {file_info['file_name']}")
-            
+
             converted_images = []
-            
+
             for i, record in enumerate(image_names):
                 # 中断チェック
                 if self._check_cancellation():
-                    print(f"=== 画像変換処理が中断されました ({i}/{len(image_names)}) ===")
                     self._logger.info(f"画像変換処理中断: {file_info['file_name']} - {i}/{len(image_names)}")
                     break
-                
+
                 converted_files = self._error_handler.safe_execute(
                     self._process_single_image,
                     record, file_info,
@@ -84,130 +82,123 @@ class ImageProcessor:
                 )
                 if converted_files:
                     converted_images.extend(converted_files)
-            
+
             if not self._is_cancelled:
-                print(f"=== ファイル {file_info['file_name']} 処理完了 ===")
                 self._logger.info(f"ファイル処理完了: {file_info['file_name']} - 変換画像数: {len(converted_images)}")
-            
+
             return converted_images
-            
+
         except ValidationError as e:
             self._error_handler.handle_error(e, "画像処理の入力検証")
             return []
-    
+
     def _process_single_image(self, record: Dict[str, str], file_info: Dict[str, str]) -> List[str]:
         """
         単一の画像を処理
-        
+
         Args:
             record: 画像名情報
             file_info: ファイル情報
-            
+
         Returns:
             変換された画像ファイルのパスのリスト
         """
         row_text = record["row_index"]
         image_name = record["image_name"]
         output_dir = record["output_dir"]
-        
-        print(f"処理対象: row_index={row_text}, image_name={image_name}")
-        
+
+        self._logger.debug(f"処理対象: row_index={row_text}, image_name={image_name}")
+
         # コード抽出
         code = self._extract_code_from_row_index(row_text)
         if not code:
             return []
-        
+
         if code not in self._config.width_map:
-            print(f"  [WARN] {code} の幅未定義。スキップ: {image_name}")
             self._logger.warning(f"幅未定義: {code} - スキップ: {image_name}")
             return []
-        
+
         sizes = self._config.width_map[code]
-        
+
         # 入力ファイル確認
         input_file = image_utils.find_input_image(image_name)
         if not input_file:
-            print(f"  [ERROR] 入力ファイルが存在しません: {image_name} (jpg/png/webp)")
-            self._logger.error(f"入力ファイルが存在しません: {image_name}")
+            self._logger.error(f"入力ファイルが存在しません: {image_name} (jpg/png/webp)")
             # 存在しない画像名をファイルに記録
             record_missing_image(image_name, file_info['file_name_without_ext'], self._logger)
             return []
-        
-        print(f"  入力ファイル発見: {input_file}")
-        
+
+        self._logger.debug(f"入力ファイル発見: {input_file}")
+
         # 幅ごとにWebP変換
         converted_files = []
         for size in sizes:
             # 中断チェック
             if self._check_cancellation():
-                print(f"  画像変換が中断されました: {image_name}")
+                self._logger.debug(f"画像変換が中断されました: {image_name}")
                 break
-                
+
             converted_file = self._convert_single_size(
                 input_file, image_name, size, output_dir
             )
             if converted_file:
                 converted_files.append(converted_file)
-        
+
         return converted_files
-    
+
     def _convert_single_size(
-        self, 
-        input_file: str, 
-        image_name: str, 
-        size: List[int], 
+        self,
+        input_file: str,
+        image_name: str,
+        size: List[int],
         output_dir: str
     ) -> Optional[str]:
         """
         単一サイズでの画像変換
-        
+
         Args:
             input_file: 入力ファイルのパス
             image_name: 画像名
             size: [幅, 高さ]のリスト
             output_dir: 出力ディレクトリ
-            
+
         Returns:
             変換されたファイルのパス、失敗時はNone
         """
         output_file = f"{output_dir}/{image_name}{size[0]}.webp"
-        
+
         # 出力ファイルが既に存在する場合はスキップ
         if os.path.exists(output_file):
-            print(f"  → 出力ファイルが既に存在するため、{image_name} を {size}px 幅で WebP に変換しません")
             self._logger.debug(f"スキップ: {image_name} - {size}px - 出力ファイルが既に存在")
             return output_file
-        
-        print(f"  → 変換開始: {input_file} → {output_file} (width={size[0]} height={size[1]})")
-        
+
+        self._logger.debug(f"変換開始: {input_file} → {output_file} (width={size[0]} height={size[1]})")
+
         # Pillowを使用して変換（WebP形式の場合はリサイズのみ）
         success = image_utils.convert_image_with_pillow(input_file, size, output_file)
-        
+
         if success:
-            print(f"    [OK] {image_name} を {size}px 幅で WebP に変換成功")
             self._logger.debug(f"変換成功: {image_name} - {size}px")
             return output_file
         else:
-            print(f"    [NG] {image_name} の変換失敗 ({size}px)")
             self._logger.error(f"変換失敗: {image_name} - {size}px")
             raise ImageConversionError(f"画像変換失敗: {image_name} - {size}px")
-    
+
     def _extract_code_from_row_index(self, row_index: str) -> Optional[str]:
         """
         row_indexからコード部分を抽出
-        
+
         Args:
             row_index: 行インデックス（左セルのテキスト）
-            
+
         Returns:
             抽出されたコード、失敗時はNone
         """
         import re
-        
+
         code_match = re.match(self._patterns_config.code_pattern, row_index)
         if not code_match:
-            print(f"  [WARN] コード抽出失敗: {row_index}")
             self._logger.warning(f"コード抽出失敗: {row_index}")
             return None
-        
+
         return code_match.group(1)

@@ -19,13 +19,13 @@ def has_alpha(img: Image.Image) -> bool:
 def load_image_with_exif(path: Union[str, Path]) -> Image.Image:
     """
     EXIF情報を考慮して画像を読み込み
-    
+
     Args:
         path: 画像ファイルのパス
-        
+
     Returns:
         読み込まれた画像オブジェクト
-        
+
     Raises:
         FileNotFoundError: ファイルが存在しない場合
         PIL.UnidentifiedImageError: 画像として認識できない場合
@@ -97,7 +97,7 @@ def ensure_rgba_or_rgb(img: Image.Image) -> Image.Image:
 def save_webp(img: Image.Image, dst_path: Union[str, Path]) -> None:
     """
     WEBP形式で保存
-    
+
     Args:
         img: 保存する画像オブジェクト
         dst_path: 保存先のパス
@@ -129,8 +129,8 @@ def is_webp_image(input_path: str) -> bool:
         return False
 
 
-def convert_image_with_pillow(input_path: Union[str, Path], 
-                             size: List[int], 
+def convert_image_with_pillow(input_path: Union[str, Path],
+                             size: List[int],
                              output_path: Union[str, Path]) -> bool:
     """
     Pillowを使用して画像を変換
@@ -143,7 +143,7 @@ def convert_image_with_pillow(input_path: Union[str, Path],
 
     Returns:
         変換成功時True、失敗時False
-        
+
     Raises:
         なし（例外は内部でキャッチされFalseが返される）
     """
@@ -155,13 +155,15 @@ def convert_image_with_pillow(input_path: Union[str, Path],
         is_webp = is_webp_image(input_path)
 
         if is_webp:
-            print(f"    [INFO] 元画像がWebP形式のため、リサイズのみ実行")
+            logger = logging.getLogger(__name__)
+            logger.debug("元画像がWebP形式のため、リサイズのみ実行")
             # WebP形式の場合はリサイズのみ
             resized_img = resize_fit(img, size)
             # そのままWebP形式で保存
             save_webp(resized_img, output_path)
         else:
-            print(f"    [INFO] 元画像をWebP形式に変換してリサイズ実行")
+            logger = logging.getLogger(__name__)
+            logger.debug("元画像をWebP形式に変換してリサイズ実行")
             # 他の形式の場合は従来通り変換
             img = ensure_rgba_or_rgb(img)
             # リサイズ（余白追加）
@@ -172,7 +174,6 @@ def convert_image_with_pillow(input_path: Union[str, Path],
         return True
     except Exception as e:
         logger = logging.getLogger(__name__)
-        print(f"    [ERROR] Pillow変換エラー: {e}")
         logger.error(f"画像変換エラー: {input_path} → {output_path} - {e}")
         return False
 
@@ -189,12 +190,12 @@ def find_input_image(image_name: str) -> Optional[str]:
     """
     if not image_name:
         return None
-    
+
     directories_config = config_loader.get_directories()
     image_processing_config = config_loader.get_image_processing()
-    
+
     images_dir = Path(directories_config.images_dir)
-    
+
     if not images_dir.exists():
         return None
 
@@ -202,5 +203,5 @@ def find_input_image(image_name: str) -> Optional[str]:
         file_path = images_dir / f"{image_name}.{ext}"
         if file_path.exists():
             return str(file_path)
-    
+
     return None

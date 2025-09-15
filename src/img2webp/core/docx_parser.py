@@ -17,10 +17,10 @@ from ..utils.logger import get_logger
 
 class DocxAnalyzer:
     """DOCX解析を担当するクラス"""
-    
+
     def __init__(self):
         self.logger = get_logger(__name__)
-    
+
     def extract_image_names_from_docx(self, docx_file: str) -> List[Dict[str, str]]:
         """
         DOCXファイルから画像名を抽出
@@ -44,11 +44,9 @@ class DocxAnalyzer:
         try:
             doc = Document(docx_file)
         except Exception as e:
-            print(f"[ERROR] ファイル読み込みエラー: {e}")
             self.logger.error(f"DOCXファイル読み込みエラー: {docx_file} - {e}")
             raise DocxFileError(f"DOCXファイル読み込み失敗: {docx_file}") from e
 
-        print("=== テーブル読み込み開始 ===")
         self.logger.info(f"DOCX解析開始: {file_name}")
 
         # 各テーブルを順番に処理
@@ -60,36 +58,34 @@ class DocxAnalyzer:
             thumbnail_images = self._extract_thumbnail_images(image_names, file_name, output_dir)
             image_names.extend(thumbnail_images)
 
-        print("=== 正規表現抽出完了 ===")
-        print(f"抽出された画像名数: {len(image_names)}")
         self.logger.info(f"画像名抽出完了: {file_name} - 抽出数: {len(image_names)}")
 
         return image_names
-    
+
     def _process_table(
-        self, 
-        table, 
-        table_index: int, 
-        file_name: str, 
+        self,
+        table,
+        table_index: int,
+        file_name: str,
         output_dir: str
     ) -> List[Dict[str, str]]:
         """
         テーブルを処理して画像名を抽出
-        
+
         Args:
             table: DOCXテーブルオブジェクト
             table_index: テーブルのインデックス
             file_name: ファイル名
             output_dir: 出力ディレクトリ
-            
+
         Returns:
             抽出された画像名情報のリスト
         """
         image_names = []
-        
+
         # テーブルの最初の行の左端セル（0番目）から画像コードを取得
         left_text = table.rows[0].cells[0].text.strip().replace("\n", "") if len(table.rows) > 0 else ""
-        print(f"[テーブル{table_index}] 左セル（画像コード）: {left_text}")
+        self.logger.debug(f"[テーブル{table_index}] 左セル（画像コード）: {left_text}")
 
         # テーブルの各行を処理
         for row_index, row in enumerate(table.rows, start=1):
@@ -103,12 +99,12 @@ class DocxAnalyzer:
                     if not line:  # 空行はスキップ
                         continue
 
-                    print(f"  行{row_index} 列{cell_index + 1}: {line}")
+                    self.logger.debug(f"  行{row_index} 列{cell_index + 1}: {line}")
 
                     # 正規表現パターンで画像名を検索
                     matches = re.findall(config.IMAGE_PATTERN, line)
                     if matches:
-                        print(f"    マッチ: {matches}")
+                        self.logger.debug(f"    マッチ: {matches}")
 
                     # マッチした画像名を1つずつ処理
                     for match in matches:
@@ -121,33 +117,33 @@ class DocxAnalyzer:
                                 "row_index": left_text,           # 画像コード（左セル）
                                 "image_name": image_name          # 抽出された画像名
                             })
-        
+
         return image_names
-    
+
     def _extract_thumbnail_images(
-        self, 
-        image_names: List[Dict[str, str]], 
-        file_name: str, 
+        self,
+        image_names: List[Dict[str, str]],
+        file_name: str,
         output_dir: str
     ) -> List[Dict[str, str]]:
         """
         THUMBNAILの画像名を抽出
-        
+
         Args:
             image_names: 既存の画像名情報のリスト
             file_name: ファイル名
             output_dir: 出力ディレクトリ
-            
+
         Returns:
             THUMBNAIL画像名情報のリスト
         """
-        print("=== THUMBNAILの画像名追加処理開始 ===")
-        
+        self.logger.debug("THUMBNAILの画像名追加処理開始")
+
         additional_matches = []
         for image_info in image_names:
             image_name = image_info["image_name"]
             new_name = ""
-            
+
             # "-kv" または "_kv" を含むか判定
             if re.search(r'.*-kv', image_name):
                 # "-kv" を "-thumbnail" に置換
@@ -162,7 +158,6 @@ class DocxAnalyzer:
 
         thumbnail_images = []
         if additional_matches:
-            print(f"追加された画像名: {additional_matches}")
             self.logger.info(f"追加された画像名: {additional_matches}")
 
             # thumbnail画像情報を作成
@@ -173,7 +168,7 @@ class DocxAnalyzer:
                     "row_index": "THUMBNAIL",
                     "image_name": thumbnail_name.strip()
                 })
-        
+
         return thumbnail_images
 
 
@@ -181,10 +176,10 @@ class DocxAnalyzer:
 def extract_image_names_from_docx(docx_file: str) -> List[Dict[str, str]]:
     """
     DOCXファイルから画像名を抽出（後方互換性のためのラッパー関数）
-    
+
     Args:
         docx_file: DOCXファイルのパス
-        
+
     Returns:
         画像名情報のリスト
     """
@@ -221,14 +216,11 @@ def validate_docx_files(docx_files: List[str]) -> bool:
     """
     logger = get_logger(__name__)
     if not docx_files:
-        print(f"[ERROR] {config.DOCX_DIRECTORY} ディレクトリにDOCXファイルが見つかりません")
         logger.error(f"DOCXファイルが見つかりません: {config.DOCX_DIRECTORY}")
         return False
 
-    print(f"処理対象ファイル数: {len(docx_files)}")
     logger.info(f"処理対象ファイル数: {len(docx_files)}")
     for file in docx_files:
-        print(f"  - {os.path.basename(file)}")
         logger.debug(f"処理対象ファイル: {os.path.basename(file)}")
 
     return True

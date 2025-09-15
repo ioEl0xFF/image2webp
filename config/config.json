@@ -21,7 +21,7 @@
   },
   "logging": {
     "log_file": "LOG.log",
-    "log_level": "INFO",
+    "log_level": "DEBUG",
     "log_format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     "log_date_format": "%Y-%m-%d %H:%M:%S",
     "log_max_bytes": 10485760,

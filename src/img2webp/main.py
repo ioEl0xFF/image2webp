@@ -39,8 +39,7 @@ class Img2WebpProcessor:
             import threading
             if threading.current_thread() is threading.main_thread():
                 def signal_handler(signum, frame):
-                    print("\n\n=== 中断要求を受信しました ===")
-                    print("現在の処理を安全に終了しています...")
+                    self._logger.info("中断要求を受信しました - 現在の処理を安全に終了しています")
                     self._is_cancelled = True
                     if hasattr(self, '_image_processor'):
                         self._image_processor.cancel_processing()
@@ -68,7 +67,7 @@ class Img2WebpProcessor:
 
             # 中断チェック
             if self._is_cancelled:
-                print("=== 処理が中断されました ===")
+                self._logger.info("処理が中断されました")
                 return
 
             # 必要なディレクトリを準備
@@ -76,7 +75,7 @@ class Img2WebpProcessor:
 
             # 中断チェック
             if self._is_cancelled:
-                print("=== 処理が中断されました ===")
+                self._logger.info("処理が中断されました")
                 return
 
             # 全ファイル処理
@@ -84,8 +83,7 @@ class Img2WebpProcessor:
 
             # 中断チェック
             if self._is_cancelled:
-                print("=== 処理が中断されました ===")
-                print(f"部分的に処理されたファイル: {len(all_converted_images)} 個")
+                self._logger.info(f"処理が中断されました - 部分的に処理されたファイル: {len(all_converted_images)} 個")
                 return
 
             # 処理結果の表示と保存
@@ -98,14 +96,11 @@ class Img2WebpProcessor:
 
         except Img2WebpError as e:
             self._error_handler.handle_error(e, "メイン処理", reraise=False)
-            print(f"[ERROR] 処理中にエラーが発生しました: {e}")
         except KeyboardInterrupt:
             # Ctrl+C による中断
-            print("\n=== 処理が中断されました ===")
             self._logger.info("処理がユーザーによって中断されました")
         except Exception as e:
             self._error_handler.handle_error(e, "メイン処理", reraise=False)
-            print(f"[ERROR] 予期しないエラーが発生しました: {e}")
         finally:
             # リソースのクリーンアップ
             self._cleanup_resources()
@@ -146,7 +141,7 @@ class Img2WebpProcessor:
         for file_index, docx_file in enumerate(docx_files, start=1):
             # 中断チェック
             if self._is_cancelled:
-                print(f"=== ファイル処理が中断されました ({file_index-1}/{len(docx_files)}) ===")
+                self._logger.info(f"ファイル処理が中断されました ({file_index-1}/{len(docx_files)})")
                 break
 
             try:
@@ -159,7 +154,6 @@ class Img2WebpProcessor:
 
             except Exception as e:
                 self._logger.error(f"ファイル処理エラー: {docx_file} - {e}")
-                print(f"[ERROR] ファイル処理に失敗しました: {os.path.basename(docx_file)}")
                 continue
 
         return all_converted_images, all_image_names
@@ -173,9 +167,7 @@ class Img2WebpProcessor:
         """単一ファイルを処理"""
         file_info = self._file_manager.get_file_info(docx_file)
 
-        print(f"\n=== ファイル {file_index}/{total_files}: {file_info['file_name']} ===")
-        print(f"出力ディレクトリ: {file_info['output_dir']}")
-        self._logger.info(f"ファイル処理開始: {file_info['file_name']} (出力ディレクトリ: {file_info['output_dir']})")
+        self._logger.info(f"ファイル処理開始 ({file_index}/{total_files}): {file_info['file_name']} (出力ディレクトリ: {file_info['output_dir']})")
 
         # 出力ディレクトリを作成
         self._file_manager.create_output_directory(docx_file)
@@ -196,7 +188,7 @@ class Img2WebpProcessor:
         html_file_path = self._file_manager.find_html_file(docx_file)
 
         if html_file_path and image_names:
-            print("=== HTML画像名置換処理開始 ===")
+            self._logger.info("HTML画像名置換処理開始")
             success = self._html_processor.process_html_file(html_file_path, image_names)
             if not success:
                 self._logger.warning(f"HTML処理に失敗: {html_file_path}")
@@ -208,7 +200,6 @@ class Img2WebpProcessor:
         docx_files: List[str]
     ) -> None:
         """処理結果の表示と保存"""
-        print("\n=== 全ファイル処理完了 ===")
         self._logger.info(f"全ファイル処理完了 - 総変換画像数: {len(all_converted_images)}")
 
         # 存在しない画像の件数を表示
@@ -227,9 +218,7 @@ class Img2WebpProcessor:
         """存在しない画像の件数を表示"""
         missing_count = get_missing_images_count()
         if missing_count > 0:
-            print(f"存在しない画像ファイル数: {missing_count}")
-            print(f"詳細は {self._config.log_dir}/missing_images.txt を確認してください")
-            self._logger.info(f"存在しない画像ファイル数: {missing_count}")
+            self._logger.info(f"存在しない画像ファイル数: {missing_count} - 詳細は {self._config.log_dir}/missing_images.txt を確認してください")
 
 
 def main():

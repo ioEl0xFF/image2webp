@@ -38,14 +38,14 @@ def setup_logging() -> logging.Logger:
     # デフォルト: 最大10MB、5つのバックアップファイルを保持
     max_bytes = config.LOG_MAX_BYTES
     backup_count = config.LOG_BACKUP_COUNT
-    
+
     file_handler = RotatingFileHandler(
-        log_file_path, 
+        log_file_path,
         maxBytes=max_bytes,
         backupCount=backup_count,
         encoding='utf-8'
     )
-    
+
     # ログ設定
     logging.basicConfig(
         level=getattr(logging, config.LOG_LEVEL),
@@ -64,7 +64,7 @@ def setup_logging() -> logging.Logger:
 
     # 存在しない画像記録ファイルを初期化
     _initialize_missing_images_file(logger)
-    
+
     # 古いログファイルをクリーンアップ
     _cleanup_old_logs(logger)
 
@@ -98,21 +98,21 @@ def _ensure_log_directory(log_dir: Path) -> None:
 
                 try:
                     log_file_path.rename(backup_path)
-                    print(f"既存のログファイルを {backup_name} にバックアップしました")
+                    # ログファイルのバックアップはコンソール出力のみ（ログファイルが使用できないため）
                 except OSError:
                     # バックアップも失敗した場合は新しい名前でログファイルを作成
                     import uuid
                     unique_suffix = str(uuid.uuid4())[:8]
                     config.LOG_FILE = f"LOG_{unique_suffix}.log"
-                    print(f"ログファイル名を {config.LOG_FILE} に変更しました")
+                    # ログファイル名の変更はコンソール出力のみ（ログファイルが使用できないため）
 
     except Exception as e:
-        print(f"ログディレクトリの作成に失敗: {e}")
+        # ログディレクトリの作成に失敗した場合はコンソール出力のみ
         # フォールバック: 現在のディレクトリに作成
         import tempfile
         log_dir = Path(tempfile.gettempdir()) / "img2webp_logs"
         log_dir.mkdir(exist_ok=True)
-        print(f"フォールバック: ログディレクトリを {log_dir} に作成しました")
+        # フォールバック情報はコンソール出力のみ（ログファイルが使用できないため）
 
 
 def _initialize_missing_images_file(logger: logging.Logger) -> None:
@@ -176,7 +176,7 @@ def get_missing_images_count() -> int:
 def _cleanup_old_logs(logger: logging.Logger) -> None:
     """
     古いログファイルをクリーンアップ
-    
+
     Args:
         logger: ロガーインスタンス
     """
@@ -184,17 +184,17 @@ def _cleanup_old_logs(logger: logging.Logger) -> None:
         log_dir = Path(config.LOG_DIR)
         if not log_dir.exists():
             return
-            
+
         # 30日以上古いログファイルを削除
         cutoff_time = time.time() - (30 * 24 * 60 * 60)  # 30日前
-        
+
         # ログファイルのパターンを検索
         log_patterns = [
             f"{config.LOG_FILE}.*",  # ローテーションされたファイル
             "*.log.backup_*",        # バックアップファイル
             "LOG_*.log"              # 一意名ファイル
         ]
-        
+
         deleted_count = 0
         for pattern in log_patterns:
             for log_file in glob.glob(str(log_dir / pattern)):
@@ -207,10 +207,10 @@ def _cleanup_old_logs(logger: logging.Logger) -> None:
                 except (OSError, FileNotFoundError):
                     # ファイルが既に削除されているか、アクセスできない場合
                     pass
-        
+
         if deleted_count > 0:
             logger.info(f"古いログファイルを{deleted_count}個削除しました")
-            
+
     except Exception as e:
         logger.warning(f"ログファイルクリーンアップ中にエラー: {e}")
 
