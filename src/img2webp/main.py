@@ -4,6 +4,8 @@ DOCXファイルから画像名を抽出し、WebP形式に変換する
 """
 
 import os
+import signal
+import sys
 from typing import List, Dict, Tuple
 
 from .config.loader import config_loader
@@ -27,6 +29,32 @@ class Img2WebpProcessor:
         self._image_processor = ImageProcessor()
         self._html_processor = HtmlProcessor()
         self._config = config_loader.get_directories()
+        self._is_cancelled = False
+        self._setup_signal_handlers()
+
+    def _setup_signal_handlers(self):
+        """シグナルハンドラーを設定（Ctrl+C対応）"""
+        try:
+            # メインスレッドでのみシグナルハンドラーを設定
+            import threading
+            if threading.current_thread() is threading.main_thread():
+                def signal_handler(signum, frame):
+                    print("\n\n=== 中断要求を受信しました ===")
+                    print("現在の処理を安全に終了しています...")
+                    self._is_cancelled = True
+                    if hasattr(self, '_image_processor'):
+                        self._image_processor.cancel_processing()
+
+                # SIGINT (Ctrl+C) のハンドラーを設定
+                signal.signal(signal.SIGINT, signal_handler)
+
+                # Windows以外ではSIGTERMも処理
+                if hasattr(signal, 'SIGTERM'):
+                    signal.signal(signal.SIGTERM, signal_handler)
+        except Exception as e:
+            # シグナルハンドラーの設定に失敗した場合は無視
+            # GUIモードなどでは設定できない場合がある
+            pass
 
     def run(self) -> None:
         """メイン処理を実行"""
@@ -38,23 +66,67 @@ class Img2WebpProcessor:
             if not docx_files:
                 return
 
+            # 中断チェック
+            if self._is_cancelled:
+                print("=== 処理が中断されました ===")
+                return
+
             # 必要なディレクトリを準備
             self._file_manager.ensure_base_directories()
+
+            # 中断チェック
+            if self._is_cancelled:
+                print("=== 処理が中断されました ===")
+                return
 
             # 全ファイル処理
             all_converted_images, all_image_names = self._process_all_files(docx_files)
 
+            # 中断チェック
+            if self._is_cancelled:
+                print("=== 処理が中断されました ===")
+                print(f"部分的に処理されたファイル: {len(all_converted_images)} 個")
+                return
+
             # 処理結果の表示と保存
             self._display_and_save_results(all_converted_images, all_image_names, docx_files)
 
-            self._logger.info("=== 画像変換処理終了 ===")
+            if not self._is_cancelled:
+                self._logger.info("=== 画像変換処理終了 ===")
+            else:
+                self._logger.info("=== 画像変換処理中断 ===")
 
         except Img2WebpError as e:
             self._error_handler.handle_error(e, "メイン処理", reraise=False)
             print(f"[ERROR] 処理中にエラーが発生しました: {e}")
+        except KeyboardInterrupt:
+            # Ctrl+C による中断
+            print("\n=== 処理が中断されました ===")
+            self._logger.info("処理がユーザーによって中断されました")
         except Exception as e:
             self._error_handler.handle_error(e, "メイン処理", reraise=False)
             print(f"[ERROR] 予期しないエラーが発生しました: {e}")
+        finally:
+            # リソースのクリーンアップ
+            self._cleanup_resources()
+
+    def _cleanup_resources(self):
+        """リソースのクリーンアップ"""
+        try:
+            # 画像プロセッサーのリセット
+            if hasattr(self, '_image_processor'):
+                self._image_processor._is_cancelled = False
+
+            # ログハンドラーのクリーンアップ
+            if hasattr(self, '_logger'):
+                handlers = self._logger.handlers[:]
+                for handler in handlers:
+                    handler.close()
+                    self._logger.removeHandler(handler)
+
+        except Exception as e:
+            # クリーンアップ中のエラーは無視
+            pass
 
     def _get_and_validate_docx_files(self) -> List[str]:
         """DOCXファイル一覧を取得し検証"""
@@ -72,6 +144,11 @@ class Img2WebpProcessor:
         all_image_names = []
 
         for file_index, docx_file in enumerate(docx_files, start=1):
+            # 中断チェック
+            if self._is_cancelled:
+                print(f"=== ファイル処理が中断されました ({file_index-1}/{len(docx_files)}) ===")
+                break
+
             try:
                 converted_images, image_names = self._process_single_file(
                     docx_file, file_index, len(docx_files)

@@ -229,6 +229,6 @@ def validate_docx_files(docx_files: List[str]) -> bool:
     logger.info(f"処理対象ファイル数: {len(docx_files)}")
     for file in docx_files:
         print(f"  - {os.path.basename(file)}")
-        logger.info(f"処理対象ファイル: {os.path.basename(file)}")
+        logger.debug(f"処理対象ファイル: {os.path.basename(file)}")
 
     return True

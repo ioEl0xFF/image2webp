@@ -6,8 +6,11 @@
 import os
 import shutil
 import logging
+from logging.handlers import RotatingFileHandler
 from typing import Optional
 from pathlib import Path
+import time
+import glob
 
 from ..config import defaults as config
 
@@ -31,13 +34,25 @@ def setup_logging() -> logging.Logger:
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
 
+    # ローテーションファイルハンドラーを作成
+    # デフォルト: 最大10MB、5つのバックアップファイルを保持
+    max_bytes = config.LOG_MAX_BYTES
+    backup_count = config.LOG_BACKUP_COUNT
+    
+    file_handler = RotatingFileHandler(
+        log_file_path, 
+        maxBytes=max_bytes,
+        backupCount=backup_count,
+        encoding='utf-8'
+    )
+    
     # ログ設定
     logging.basicConfig(
         level=getattr(logging, config.LOG_LEVEL),
         format=config.LOG_FORMAT,
         datefmt=config.LOG_DATE_FORMAT,
         handlers=[
-            logging.FileHandler(log_file_path, mode='a', encoding='utf-8'),  # 追記モード
+            file_handler,  # ローテーション対応ファイルハンドラー
             logging.StreamHandler()  # コンソールにも出力
         ],
         force=True  # 既存の設定を強制的に上書き
@@ -49,6 +64,9 @@ def setup_logging() -> logging.Logger:
 
     # 存在しない画像記録ファイルを初期化
     _initialize_missing_images_file(logger)
+    
+    # 古いログファイルをクリーンアップ
+    _cleanup_old_logs(logger)
 
     return logger
 
@@ -153,6 +171,48 @@ def get_missing_images_count() -> int:
             return len([line for line in lines if not line.strip().startswith("#") and line.strip()])
     except Exception:
         return 0
+
+
+def _cleanup_old_logs(logger: logging.Logger) -> None:
+    """
+    古いログファイルをクリーンアップ
+    
+    Args:
+        logger: ロガーインスタンス
+    """
+    try:
+        log_dir = Path(config.LOG_DIR)
+        if not log_dir.exists():
+            return
+            
+        # 30日以上古いログファイルを削除
+        cutoff_time = time.time() - (30 * 24 * 60 * 60)  # 30日前
+        
+        # ログファイルのパターンを検索
+        log_patterns = [
+            f"{config.LOG_FILE}.*",  # ローテーションされたファイル
+            "*.log.backup_*",        # バックアップファイル
+            "LOG_*.log"              # 一意名ファイル
+        ]
+        
+        deleted_count = 0
+        for pattern in log_patterns:
+            for log_file in glob.glob(str(log_dir / pattern)):
+                log_path = Path(log_file)
+                try:
+                    if log_path.stat().st_mtime < cutoff_time:
+                        log_path.unlink()
+                        deleted_count += 1
+                        logger.info(f"古いログファイルを削除: {log_path.name}")
+                except (OSError, FileNotFoundError):
+                    # ファイルが既に削除されているか、アクセスできない場合
+                    pass
+        
+        if deleted_count > 0:
+            logger.info(f"古いログファイルを{deleted_count}個削除しました")
+            
+    except Exception as e:
+        logger.warning(f"ログファイルクリーンアップ中にエラー: {e}")
 
 
 def get_logger(name: Optional[str] = None) -> logging.Logger:

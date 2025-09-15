@@ -66,6 +66,9 @@ class GuiImg2WebpProcessor(Img2WebpProcessor):
         self.is_cancelled = False
         self.current_file_index = 0
         self.total_files = 0
+        
+        # 画像プロセッサーに中断コールバックを設定
+        self._image_processor.set_cancel_callback(self._on_image_processor_cancel)
     
     def _apply_gui_settings(self, settings: Dict):
         """GUI設定を適用"""
@@ -98,10 +101,17 @@ class GuiImg2WebpProcessor(Img2WebpProcessor):
         # 既存のハンドラーのレベルを調整
         self._logger.addHandler(gui_handler)
     
+    def _on_image_processor_cancel(self, message: str):
+        """画像プロセッサーからの中断通知"""
+        self.log_queue.put((message, "warning"))
+    
     def cancel_processing(self):
         """処理をキャンセル"""
         self.is_cancelled = True
         self.log_queue.put(("処理のキャンセルが要求されました", "warning"))
+        
+        # 画像プロセッサーにも中断を通知
+        self._image_processor.cancel_processing()
     
     def run(self) -> None:
         """メイン処理を実行（GUI対応版）"""
@@ -143,6 +153,24 @@ class GuiImg2WebpProcessor(Img2WebpProcessor):
         except Exception as e:
             self.log_queue.put((f"予期しないエラー: {e}", "error"))
             raise
+        finally:
+            # リソースのクリーンアップ
+            self._cleanup_resources()
+    
+    def _cleanup_resources(self):
+        """リソースのクリーンアップ（GUI版）"""
+        try:
+            # 画像プロセッサーのリセット
+            if hasattr(self, '_image_processor'):
+                self._image_processor._is_cancelled = False
+                
+            # 処理状態をリセット
+            self.is_cancelled = False
+            self.current_file_index = 0
+            
+        except Exception as e:
+            # クリーンアップ中のエラーは無視
+            pass
     
     def _process_all_files_gui(self, docx_files: List[str]) -> Tuple[List[str], List[Dict[str, str]]]:
         """全ファイルを処理（GUI対応版）"""

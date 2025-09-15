@@ -57,6 +57,8 @@ LOG_FILE = config_loader.get("logging.log_file", "LOG.log")
 LOG_LEVEL = config_loader.get("logging.log_level", "INFO")
 LOG_FORMAT = config_loader.get("logging.log_format", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 LOG_DATE_FORMAT = config_loader.get("logging.log_date_format", "%Y-%m-%d %H:%M:%S")
+LOG_MAX_BYTES = config_loader.get("logging.log_max_bytes", 10485760)  # 10MB
+LOG_BACKUP_COUNT = config_loader.get("logging.log_backup_count", 5)
 
 
 def reload_config():
@@ -68,6 +70,7 @@ def reload_config():
     global IMAGE_PATTERN, CODE_PATTERN, WIDTH_MAP, MIN_WIDTH_SIZE_MAP
     global SUPPORTED_EXTENSIONS, WEBP_QUALITY, WEBP_METHOD, WEBP_LOSSLESS
     global LOG_DIR, LOG_FILE, LOG_LEVEL, LOG_FORMAT, LOG_DATE_FORMAT
+    global LOG_MAX_BYTES, LOG_BACKUP_COUNT
 
     # 設定を再読み込み
     config_loader.reload_config()
@@ -111,3 +114,5 @@ def reload_config():
     LOG_LEVEL = config_loader.get("logging.log_level", "INFO")
     LOG_FORMAT = config_loader.get("logging.log_format", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     LOG_DATE_FORMAT = config_loader.get("logging.log_date_format", "%Y-%m-%d %H:%M:%S")
+    LOG_MAX_BYTES = config_loader.get("logging.log_max_bytes", 10485760)  # 10MB
+    LOG_BACKUP_COUNT = config_loader.get("logging.log_backup_count", 5)

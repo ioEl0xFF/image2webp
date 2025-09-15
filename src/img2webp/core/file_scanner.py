@@ -77,7 +77,7 @@ class FileScanner:
         for file_path in valid_files:
             file_name = Path(file_path).name
             print(f"  - {file_name}")
-            self._logger.info(f"処理対象ファイル: {file_name}")
+            self._logger.debug(f"処理対象ファイル: {file_name}")
         
         return True
     

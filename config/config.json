@@ -23,7 +23,9 @@
     "log_file": "LOG.log",
     "log_level": "INFO",
     "log_format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    "log_date_format": "%Y-%m-%d %H:%M:%S"
+    "log_date_format": "%Y-%m-%d %H:%M:%S",
+    "log_max_bytes": 10485760,
+    "log_backup_count": 5
   },
   "patterns": {
     "image_pattern": "(?:[＜<〈]画像(?:名|\\d*)?(?:（[^）]*）)?[＞>〉]\\s*([a-zA-Z0-9\\-_]+)|画像名[:：]\\s*([a-zA-Z0-9\\-_]+))",

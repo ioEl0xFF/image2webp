@@ -27,6 +27,26 @@ class ImageProcessor:
         self._error_handler = ErrorHandler(__name__)
         self._config = config_loader.config
         self._patterns_config = config_loader.get_patterns()
+        self._is_cancelled = False
+        self._cancel_callback = None
+    
+    def set_cancel_callback(self, callback):
+        """中断時のコールバック関数を設定"""
+        self._cancel_callback = callback
+    
+    def cancel_processing(self):
+        """処理を中断"""
+        self._is_cancelled = True
+        if self._cancel_callback:
+            self._cancel_callback("画像処理が中断されました")
+    
+    def _check_cancellation(self) -> bool:
+        """中断チェック"""
+        if self._is_cancelled:
+            if self._cancel_callback:
+                self._cancel_callback("処理中断が検出されました")
+            return True
+        return False
     
     def process_images(self, image_names: List[Dict[str, str]], file_info: Dict[str, str]) -> List[str]:
         """
@@ -49,7 +69,13 @@ class ImageProcessor:
             
             converted_images = []
             
-            for record in image_names:
+            for i, record in enumerate(image_names):
+                # 中断チェック
+                if self._check_cancellation():
+                    print(f"=== 画像変換処理が中断されました ({i}/{len(image_names)}) ===")
+                    self._logger.info(f"画像変換処理中断: {file_info['file_name']} - {i}/{len(image_names)}")
+                    break
+                
                 converted_files = self._error_handler.safe_execute(
                     self._process_single_image,
                     record, file_info,
@@ -59,8 +85,9 @@ class ImageProcessor:
                 if converted_files:
                     converted_images.extend(converted_files)
             
-            print(f"=== ファイル {file_info['file_name']} 処理完了 ===")
-            self._logger.info(f"ファイル処理完了: {file_info['file_name']} - 変換画像数: {len(converted_images)}")
+            if not self._is_cancelled:
+                print(f"=== ファイル {file_info['file_name']} 処理完了 ===")
+                self._logger.info(f"ファイル処理完了: {file_info['file_name']} - 変換画像数: {len(converted_images)}")
             
             return converted_images
             
@@ -111,6 +138,11 @@ class ImageProcessor:
         # 幅ごとにWebP変換
         converted_files = []
         for size in sizes:
+            # 中断チェック
+            if self._check_cancellation():
+                print(f"  画像変換が中断されました: {image_name}")
+                break
+                
             converted_file = self._convert_single_size(
                 input_file, image_name, size, output_dir
             )
@@ -143,7 +175,7 @@ class ImageProcessor:
         # 出力ファイルが既に存在する場合はスキップ
         if os.path.exists(output_file):
             print(f"  → 出力ファイルが既に存在するため、{image_name} を {size}px 幅で WebP に変換しません")
-            self._logger.info(f"スキップ: {image_name} - {size}px - 出力ファイルが既に存在")
+            self._logger.debug(f"スキップ: {image_name} - {size}px - 出力ファイルが既に存在")
             return output_file
         
         print(f"  → 変換開始: {input_file} → {output_file} (width={size[0]} height={size[1]})")
@@ -153,7 +185,7 @@ class ImageProcessor:
         
         if success:
             print(f"    [OK] {image_name} を {size}px 幅で WebP に変換成功")
-            self._logger.info(f"変換成功: {image_name} - {size}px")
+            self._logger.debug(f"変換成功: {image_name} - {size}px")
             return output_file
         else:
             print(f"    [NG] {image_name} の変換失敗 ({size}px)")

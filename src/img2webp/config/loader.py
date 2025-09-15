@@ -41,6 +41,8 @@ class LoggingConfig:
     log_level: str = "INFO"
     log_format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     log_date_format: str = "%Y-%m-%d %H:%M:%S"
+    log_max_bytes: int = 10485760  # 10MB
+    log_backup_count: int = 5
 
 
 @dataclass

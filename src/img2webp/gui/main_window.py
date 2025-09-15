@@ -49,6 +49,9 @@ class Img2WebpGUI:
         self._create_widgets()
         self._load_settings()
 
+        # キーバインドの設定
+        self._setup_key_bindings()
+
         # ログキューの監視開始
         self._check_log_queue()
 
@@ -88,11 +91,17 @@ class Img2WebpGUI:
 
         # 進捗バー
         self.progress_var = tk.StringVar(value="準備完了")
-        self.progress_bar = ttk.Progressbar(main_frame, mode='indeterminate')
+        self.progress_bar = ttk.Progressbar(main_frame, mode='determinate')
         self.progress_bar.grid(row=5, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(10, 5))
 
         progress_label = ttk.Label(main_frame, textvariable=self.progress_var)
         progress_label.grid(row=5, column=0, columnspan=3, pady=(0, 10))
+
+        # 詳細進捗情報
+        self.detail_progress_var = tk.StringVar(value="")
+        detail_progress_label = ttk.Label(main_frame, textvariable=self.detail_progress_var,
+                                        font=('Arial', 9), foreground='gray')
+        detail_progress_label.grid(row=5, column=0, columnspan=3, pady=(25, 0))
 
         # ログ表示セクション
         self._create_log_section(main_frame)
@@ -149,9 +158,12 @@ class Img2WebpGUI:
                                       command=self._start_conversion, style="Accent.TButton")
         self.start_button.grid(row=0, column=0, padx=(0, 10))
 
-        self.stop_button = ttk.Button(control_frame, text="停止",
+        self.stop_button = ttk.Button(control_frame, text="停止 (Ctrl+C)",
                                      command=self._stop_conversion, state=tk.DISABLED)
         self.stop_button.grid(row=0, column=1, padx=(0, 10))
+
+        # ツールチップを追加
+        self._create_tooltip(self.stop_button, "処理を安全に中断します\nキーボード: Ctrl+C または ESC")
 
         ttk.Button(control_frame, text="ログクリア",
                   command=self._clear_log).grid(row=0, column=2, padx=(0, 10))
@@ -217,8 +229,10 @@ class Img2WebpGUI:
         self.is_processing = True
         self.start_button.config(state=tk.DISABLED)
         self.stop_button.config(state=tk.NORMAL)
+        self.progress_bar.config(mode='indeterminate')
         self.progress_bar.start(10)
         self.progress_var.set("処理中...")
+        self.detail_progress_var.set("処理を開始しています...")
 
         # ログクリア
         self._clear_log()
@@ -231,13 +245,21 @@ class Img2WebpGUI:
         self.conversion_thread.daemon = True
         self.conversion_thread.start()
 
+        # 進捗監視を開始
+        self._monitor_progress()
+
     def _stop_conversion(self):
         """変換処理停止"""
         if self.processor_thread and hasattr(self.processor_thread, 'cancel'):
-            self._add_log("停止要求を受け付けました", "warning")
+            self._add_log("停止要求を受け付けました。処理を安全に終了しています...", "warning")
+            self.progress_var.set("停止中...")
+            self.detail_progress_var.set("現在の処理を完了してから停止します")
             self.processor_thread.cancel()
 
-        self._reset_ui_state()
+            # 停止ボタンを無効化（重複クリック防止）
+            self.stop_button.config(state=tk.DISABLED)
+        else:
+            self._reset_ui_state()
 
     def _run_conversion(self):
         """変換処理を実行（別スレッド）"""
@@ -286,6 +308,51 @@ class Img2WebpGUI:
 
         return True
 
+    def _setup_key_bindings(self):
+        """キーバインドを設定"""
+        # Ctrl+C で処理中断（処理中のみ有効）
+        self.root.bind('<Control-c>', self._on_ctrl_c)
+        # ESC キーでも処理中断
+        self.root.bind('<Escape>', self._on_escape)
+
+    def _on_ctrl_c(self, event):
+        """Ctrl+C キー処理"""
+        if self.is_processing:
+            self._stop_conversion()
+
+    def _on_escape(self, event):
+        """Escape キー処理"""
+        if self.is_processing:
+            self._stop_conversion()
+
+    def _monitor_progress(self):
+        """進捗を監視して表示を更新"""
+        if self.processor_thread and hasattr(self.processor_thread, 'get_progress_info'):
+            progress_info = self.processor_thread.get_progress_info()
+
+            if progress_info['total_files'] > 0:
+                # プログレスバーを確定的モードに変更
+                if self.progress_bar['mode'] != 'determinate':
+                    self.progress_bar.stop()
+                    self.progress_bar.config(mode='determinate')
+                    self.progress_bar['maximum'] = progress_info['total_files']
+
+                # 進捗を更新
+                self.progress_bar['value'] = progress_info['current_file']
+
+                if progress_info['current_file'] > 0:
+                    self.progress_var.set(f"処理中 ({progress_info['current_file']}/{progress_info['total_files']})")
+                    self.detail_progress_var.set(f"ファイル処理中... {progress_info['current_file']}/{progress_info['total_files']}")
+
+                # キャンセル状態の確認
+                if progress_info['is_cancelled']:
+                    self.progress_var.set("停止中...")
+                    self.detail_progress_var.set("処理を安全に停止しています...")
+
+        # 処理中なら再度監視をスケジュール
+        if self.is_processing:
+            self.root.after(500, self._monitor_progress)
+
     def _reset_ui_state(self):
         """UI状態をリセット"""
         self.is_processing = False
@@ -293,6 +360,7 @@ class Img2WebpGUI:
         self.stop_button.config(state=tk.DISABLED)
         self.progress_bar.stop()
         self.progress_var.set("準備完了")
+        self.detail_progress_var.set("")
 
     def _check_log_queue(self):
         """ログキューを監視してログを表示"""
@@ -429,7 +497,26 @@ class Img2WebpGUI:
         except Exception as e:
             self._add_log(f"設定画面エラー: {e}", "error")
 
+    def _create_tooltip(self, widget, text):
+        """ツールチップを作成"""
+        def on_enter(event):
+            tooltip = tk.Toplevel()
+            tooltip.wm_overrideredirect(True)
+            tooltip.wm_geometry(f"+{event.x_root+10}+{event.y_root+10}")
 
+            label = ttk.Label(tooltip, text=text, background="lightyellow",
+                            relief="solid", borderwidth=1, font=("Arial", 9))
+            label.pack()
+
+            widget.tooltip = tooltip
+
+        def on_leave(event):
+            if hasattr(widget, 'tooltip'):
+                widget.tooltip.destroy()
+                del widget.tooltip
+
+        widget.bind("<Enter>", on_enter)
+        widget.bind("<Leave>", on_leave)
 
 
 def main():

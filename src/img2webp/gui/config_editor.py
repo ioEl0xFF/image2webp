@@ -76,6 +76,11 @@ class ConfigEditorWindow:
         self.log_dir = tk.StringVar(value=config_loader.get("directories.log_dir", ".logs"))
         self.log_file = tk.StringVar(value=config_loader.get("logging.log_file", "LOG.log"))
         self.log_level = tk.StringVar(value=config_loader.get("logging.log_level", "INFO"))
+        
+        # ログローテーション設定
+        log_max_bytes = config_loader.get("logging.log_max_bytes", 10485760)
+        self.log_max_mb = tk.StringVar(value=str(log_max_bytes // (1024 * 1024)))  # バイトをMBに変換
+        self.log_backup_count = tk.StringVar(value=str(config_loader.get("logging.log_backup_count", 5)))
 
         # 正規表現パターン（テキストエリア用）
         self.image_pattern = tk.StringVar(value=config_loader.get("patterns.image_pattern", ""))
@@ -202,6 +207,19 @@ class ConfigEditorWindow:
                                       state="readonly")
         log_level_combo.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
 
+        # ログローテーション設定
+        ttk.Label(log_frame, text="ログファイル最大サイズ (MB):").grid(row=2, column=0, sticky=tk.W, pady=5)
+        log_max_mb_entry = ttk.Entry(log_frame, textvariable=self.log_max_mb)
+        log_max_mb_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
+        
+        ttk.Label(log_frame, text="バックアップファイル数:").grid(row=3, column=0, sticky=tk.W, pady=5)
+        log_backup_entry = ttk.Entry(log_frame, textvariable=self.log_backup_count)
+        log_backup_entry.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
+        
+        # 説明ラベル
+        ttk.Label(log_frame, text="ログファイルが指定サイズを超えると自動的にローテーションされます",
+                 font=('Arial', 8), foreground='gray').grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(10, 0))
+
     def _create_pattern_tab(self):
         """パターン設定タブを作成"""
         pattern_frame = ttk.Frame(self.notebook, padding="10")
@@ -307,6 +325,11 @@ class ConfigEditorWindow:
 
             config_loader.set("logging.log_file", self.log_file.get())
             config_loader.set("logging.log_level", self.log_level.get())
+            
+            # ログローテーション設定を更新
+            log_max_mb = int(self.log_max_mb.get())
+            config_loader.set("logging.log_max_bytes", log_max_mb * 1024 * 1024)  # MBをバイトに変換
+            config_loader.set("logging.log_backup_count", int(self.log_backup_count.get()))
 
             # 正規表現パターンを更新
             config_loader.set("patterns.image_pattern", self.image_pattern_text.get(1.0, tk.END).strip())
