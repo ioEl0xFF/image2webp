@@ -232,6 +232,15 @@ def create_distribution_package():
     if exe_src.exists():
         shutil.copy2(exe_src, exe_dst)
 
+    # config.jsonをコピー
+    config_src = Path('config.json')
+    config_dst = dist_dir / 'config.json'
+    if config_src.exists():
+        shutil.copy2(config_src, config_dst)
+        print(f"設定ファイルをコピーしました: {config_dst}")
+    else:
+        print("警告: config.jsonが見つかりません。")
+
     # サンプルディレクトリ構造を作成
     sample_dirs = ['docxs', 'images', 'html', 'output']
     for dir_name in sample_dirs:
@@ -256,12 +265,19 @@ def create_distribution_package():
 ```
 img2webp_distribution/
 ├── img2webp.exe        # メインプログラム
+├── config.json         # 設定ファイル（コマンドライン・GUI共通）
 ├── docxs/              # DOCXファイル配置用
 ├── images/             # 元画像ファイル配置用
 ├── html/               # HTMLファイル配置用（オプション）
 ├── output/             # 変換後画像出力用
 └── README_GUI.md       # このファイル
 ```
+
+## 設定ファイルについて
+
+- 配布版には**コマンドライン・GUI共通のconfig.json**が含まれています
+- GUI設定ファイル（gui_settings.json）は初回起動時に自動作成されます
+- 詳細設定が必要な場合は、GUI内の「詳細設定」ボタンから変更してください
 
 ## 注意事項
 
@@ -320,6 +336,9 @@ def main():
     else:
         print("配布用ファイル: img2webp_distribution/img2webp")
     print("配布用フォルダ: img2webp_distribution/")
+    print("設定ファイル: img2webp_distribution/config.json (コマンドライン・GUI共通)")
+    print("\n注意: 配布版にはコマンドライン・GUI共通のconfig.jsonが含まれています。")
+    print("GUI設定は初回起動時に自動作成されます。")
 
     return True
 
