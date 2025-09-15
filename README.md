@@ -47,19 +47,22 @@ git clone <repository-url>
 cd img2webp
 
 # 必要なパッケージをインストール
-pip install python-docx Pillow
+pip install -r requirements.txt
 
 # GUI版を起動
-python gui_main.py
+python gui.py
 ```
 
 ### コマンドライン版
 
 ```bash
 # 1. インストール
-pip install python-docx Pillow
+pip install -r requirements.txt
 
-# 2. ファイル配置（下記参照）
+# 2. ファイル配置
+# data/input/docx/ に処理対象のDOCXファイル
+# data/input/images/ に元画像ファイル
+# data/input/html/ にHTMLファイル（オプション）
 
 # 3. 実行
 python main.py
@@ -68,41 +71,70 @@ python main.py
 ### exe化（Windows配布用）
 
 ```bash
+# 開発用依存関係をインストール
+pip install -r requirements-dev.txt
+
 # ビルドスクリプトを実行
-python build_exe.py
+python build/scripts/build_exe.py
 
 # 実行ファイルが生成される
-# img2webp_distribution/img2webp.exe
+# build/dist/img2webp.exe
 ```
 
-## 📁 ファイル配置
+## 📁 プロジェクト構成
 
 ```
 img2webp/
-├── docxs/          # 処理対象のDOCXファイル
-├── images/         # 元画像ファイル（JPG/PNG/WebP）
-├── html/           # 画像名置換対象のHTMLファイル（オプション）
-├── src/            # Pythonソースコードディレクトリ
-│   ├── __init__.py         # パッケージ初期化ファイル
-│   ├── main.py             # メイン処理（統合クラス）
-│   ├── gui_processor.py    # GUI対応プロセッサー
-│   ├── exceptions.py       # カスタム例外クラス
-│   ├── logger_utils.py     # ログユーティリティ
-│   ├── html_processor.py   # HTML処理クラス
-│   ├── file_manager.py     # ファイル管理クラス
-│   ├── image_processor.py  # 画像処理クラス
-│   ├── docx_parser.py      # DOCX解析クラス
-│   ├── image_utils.py      # 画像処理ユーティリティ
-│   ├── config.py           # 設定ファイル（JSON読み込み）
-│   └── config_loader.py    # JSON設定ローダー 🆕
-├── main.py         # コマンドライン版エントリーポイント
-├── gui_main.py     # GUI版エントリーポイント 🆕
-├── config_gui.py   # 設定編集GUI 🆕
-├── config.json     # JSON設定ファイル 🆕
-├── build_exe.py    # exe化スクリプト 🆕
-├── test_gui.py     # テスト用スクリプト 🆕
-├── README.md       # プロジェクト説明書
-└── README_GUI.md   # GUI版詳細ドキュメント 🆕
+├── 📁 src/                          # ソースコード
+│   └── img2webp/                    # メインパッケージ
+│       ├── __init__.py
+│       ├── main.py                  # メイン処理クラス
+│       ├── cli.py                   # CLI エントリーポイント
+│       ├── gui/                     # GUI関連
+│       │   ├── __init__.py
+│       │   ├── main_window.py       # メインGUI
+│       │   ├── config_editor.py     # 設定編集GUI
+│       │   └── processor.py         # GUI用プロセッサー
+│       ├── core/                    # コア機能
+│       │   ├── __init__.py
+│       │   ├── docx_parser.py       # DOCX解析
+│       │   ├── image_processor.py   # 画像処理
+│       │   ├── html_processor.py    # HTML処理
+│       │   └── file_manager.py      # ファイル管理
+│       ├── config/                  # 設定管理
+│       │   ├── __init__.py
+│       │   ├── loader.py            # 設定ローダー
+│       │   └── defaults.py          # デフォルト設定
+│       └── utils/                   # ユーティリティ
+│           ├── __init__.py
+│           ├── logger.py            # ログ機能
+│           ├── exceptions.py        # 例外クラス
+│           └── image_utils.py       # 画像ユーティリティ
+├── 📁 config/                       # 設定ファイル
+│   ├── config.json                  # メイン設定
+│   └── gui_settings.json            # GUI設定
+├── 📁 data/                         # データディレクトリ
+│   ├── samples/                     # サンプルデータ
+│   │   ├── docx/
+│   │   ├── images/
+│   │   └── html/
+│   ├── input/                       # 入力データ
+│   │   ├── docx/                    # 処理対象DOCX
+│   │   ├── images/                  # 元画像ファイル
+│   │   └── html/                    # HTMLファイル（オプション）
+│   └── output/                      # 出力結果
+├── 📁 build/                        # ビルド関連
+│   ├── scripts/
+│   │   └── build_exe.py             # exe化スクリプト
+│   └── dist/                        # 配布用ファイル
+├── 📁 docs/                         # ドキュメント
+│   └── GUI_GUIDE.md                 # GUI版詳細ガイド
+├── 📁 tests/                        # テストファイル
+├── 📄 main.py                       # CLI エントリーポイント
+├── 📄 gui.py                        # GUI エントリーポイント
+├── 📄 requirements.txt              # 基本依存関係
+├── 📄 requirements-dev.txt          # 開発用依存関係
+└── 📄 README.md                     # このファイル
 ```
 
 ## 📋 使用方法
@@ -111,7 +143,7 @@ img2webp/
 
 1. **アプリケーション起動**
    ```bash
-   python gui_main.py
+   python gui.py
    ```
 
 2. **ディレクトリ設定**
@@ -167,16 +199,16 @@ img2webp/
 
 #### 設定カスタマイズ
 
-設定は`config.json`ファイルまたはGUIの詳細設定画面から変更できます：
+設定は`config/config.json`ファイルまたはGUIの詳細設定画面から変更できます：
 
-**config.json例:**
+**config/config.json例:**
 ```json
 {
   "directories": {
-    "docx_directory": "docxs",
-    "output_base_dir": "output",
-    "images_dir": "images",
-    "html_dir": "html"
+    "docx_directory": "data/input/docx",
+    "output_base_dir": "data/output",
+    "images_dir": "data/input/images",
+    "html_dir": "data/input/html"
   },
   "image_processing": {
     "webp_quality": 100,
@@ -209,7 +241,7 @@ img2webp/
 ## 📁 出力構造
 
 ```
-output/
+data/output/
 ├── ファイル名1/
 │   ├── image-name-011800.webp
 │   ├── image-name-011200.webp
@@ -333,6 +365,8 @@ COMFRPTC12では、カーセル版と通常版で異なる画像サイズを使�
 - `.logs/all_converted_images.txt`: 変換済み画像ファイル一覧
 - `.logs/missing_images.txt`: 存在しない画像ファイル一覧
 
+**注意**: ログファイルのパスは `config/config.json` の `directories.log_dir` で設定可能です。
+
 ## 🔧 必要な環境
 
 ### 基本環境
@@ -381,6 +415,13 @@ COMFRPTC12では、カーセル版と通常版で異なる画像サイズを使�
   - GUI詳細設定画面でJSON設定を編集可能
   - 設定の保存・復元がより簡単に
   - 後方互換性を維持しながら設定管理を改善
+- **v3.0**: 🏗️ **プロジェクト構成大幅見直し** 🆕
+  - モジュラー設計の完全実装（gui/core/config/utils分離）
+  - データディレクトリの整理（input/output/samples分離）
+  - ビルドシステムの統一化
+  - エントリーポイントの明確化（main.py/gui.py）
+  - 設定ファイルの集約化（config/ディレクトリ）
+  - 保守性・拡張性の大幅向上
 
 ## 🤝 貢献
 

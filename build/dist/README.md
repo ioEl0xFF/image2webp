@@ -1,0 +1,432 @@
+# img2webp
+
+📄 **DOCXファイルから画像名を抽出し、WebP形式に変換するPythonツール**
+
+Word文書内のテーブルから画像名を自動抽出し、複数サイズのWebP画像を生成します。Webサイト用の画像最適化に最適です。
+
+🖥️ **GUI版も利用可能！** 直感的なインターフェースで簡単操作できます。
+
+## ✨ 主な機能
+
+### コア機能
+
+- 🔍 **自動画像名抽出**: DOCXファイル内のテーブルから画像名を自動検出
+- 🖼️ **複数サイズ変換**: 設定に基づいて複数のサイズでWebP画像を生成
+- 📐 **アスペクト比保持**: 元画像の比率を維持しながらリサイズ
+- 🔄 **メディアクエリベースHTML置換**: HTMLのメディアクエリに基づいて最適な画像サイズを自動選択
+- 🎯 **レスポンシブ対応**: 画面サイズと解像度に応じた画像サイズの自動判定
+- 🎠 **カーセル判定**: COMFRPTC12専用のカーセル/通常版判定機能
+- 📊 **バッチ処理**: 複数のDOCXファイルを一括処理
+
+### GUI版の特徴 🆕
+
+- 🖥️ **直感的なGUI**: 使いやすいグラフィカルユーザーインターフェース
+- 📁 **ディレクトリ選択**: ダイアログでディレクトリを簡単選択
+- 📊 **リアルタイム進捗**: 処理状況をリアルタイムで表示
+- 📝 **タブ式ログ表示**: 全ログとエラーログを分けて表示
+- ⚠️ **エラー自動検出**: エラー発生時に自動的にエラータブに切り替え
+- ⚙️ **設定保存**: GUI設定の保存・復元機能
+- 🛑 **処理制御**: 処理の開始・停止をGUIで制御
+- 🎛️ **品質調整**: WebP品質をスライダーで調整
+- 🔧 **詳細設定画面**: JSON設定ファイルをGUIから編集可能 ⭐ NEW
+- 📄 **JSON設定管理**: 全設定をconfig.jsonで統一管理 ⭐ NEW
+- 💾 **exe化対応**: Windows実行ファイルとして配布可能
+
+### システム設計
+
+- 🏗️ **モジュラー設計**: 保守性とテスタビリティを重視した設計
+- ⚠️ **高度なエラーハンドリング**: カスタム例外による詳細なエラー管理
+
+## 🚀 クイックスタート
+
+### GUI版（推奨）
+
+```bash
+# リポジトリをクローン
+git clone <repository-url>
+cd img2webp
+
+# 必要なパッケージをインストール
+pip install -r requirements.txt
+
+# GUI版を起動
+python gui.py
+```
+
+### コマンドライン版
+
+```bash
+# 1. インストール
+pip install -r requirements.txt
+
+# 2. ファイル配置
+# data/input/docx/ に処理対象のDOCXファイル
+# data/input/images/ に元画像ファイル
+# data/input/html/ にHTMLファイル（オプション）
+
+# 3. 実行
+python main.py
+```
+
+### exe化（Windows配布用）
+
+```bash
+# 開発用依存関係をインストール
+pip install -r requirements-dev.txt
+
+# ビルドスクリプトを実行
+python build/scripts/build_exe.py
+
+# 実行ファイルが生成される
+# build/dist/img2webp.exe
+```
+
+## 📁 プロジェクト構成
+
+```
+img2webp/
+├── 📁 src/                          # ソースコード
+│   └── img2webp/                    # メインパッケージ
+│       ├── __init__.py
+│       ├── main.py                  # メイン処理クラス
+│       ├── cli.py                   # CLI エントリーポイント
+│       ├── gui/                     # GUI関連
+│       │   ├── __init__.py
+│       │   ├── main_window.py       # メインGUI
+│       │   ├── config_editor.py     # 設定編集GUI
+│       │   └── processor.py         # GUI用プロセッサー
+│       ├── core/                    # コア機能
+│       │   ├── __init__.py
+│       │   ├── docx_parser.py       # DOCX解析
+│       │   ├── image_processor.py   # 画像処理
+│       │   ├── html_processor.py    # HTML処理
+│       │   └── file_manager.py      # ファイル管理
+│       ├── config/                  # 設定管理
+│       │   ├── __init__.py
+│       │   ├── loader.py            # 設定ローダー
+│       │   └── defaults.py          # デフォルト設定
+│       └── utils/                   # ユーティリティ
+│           ├── __init__.py
+│           ├── logger.py            # ログ機能
+│           ├── exceptions.py        # 例外クラス
+│           └── image_utils.py       # 画像ユーティリティ
+├── 📁 config/                       # 設定ファイル
+│   ├── config.json                  # メイン設定
+│   └── gui_settings.json            # GUI設定
+├── 📁 data/                         # データディレクトリ
+│   ├── samples/                     # サンプルデータ
+│   │   ├── docx/
+│   │   ├── images/
+│   │   └── html/
+│   ├── input/                       # 入力データ
+│   │   ├── docx/                    # 処理対象DOCX
+│   │   ├── images/                  # 元画像ファイル
+│   │   └── html/                    # HTMLファイル（オプション）
+│   └── output/                      # 出力結果
+├── 📁 build/                        # ビルド関連
+│   ├── scripts/
+│   │   └── build_exe.py             # exe化スクリプト
+│   └── dist/                        # 配布用ファイル
+├── 📁 docs/                         # ドキュメント
+│   └── GUI_GUIDE.md                 # GUI版詳細ガイド
+├── 📁 tests/                        # テストファイル
+├── 📄 main.py                       # CLI エントリーポイント
+├── 📄 gui.py                        # GUI エントリーポイント
+├── 📄 requirements.txt              # 基本依存関係
+├── 📄 requirements-dev.txt          # 開発用依存関係
+└── 📄 README.md                     # このファイル
+```
+
+## 📋 使用方法
+
+### GUI版の使用方法 🆕
+
+1. **アプリケーション起動**
+   ```bash
+   python gui.py
+   ```
+
+2. **ディレクトリ設定**
+   - 各「選択」ボタンでディレクトリを指定
+   - DOCXファイル、画像ファイルは必須
+   - HTMLファイルはオプション
+
+3. **変換設定**
+   - WebP品質をスライダーで調整（1-100）
+
+4. **処理実行**
+   - 「変換開始」ボタンをクリック
+   - ログタブで進捗を確認：
+     - **全ログ**: すべての処理情報
+     - **エラー**: エラーと警告のみ表示
+   - エラー発生時は自動的にエラータブに切り替わり
+
+5. **詳細設定** ⭐ NEW
+   - 「詳細設定」ボタンをクリックして設定画面を開く
+   - タブ別に設定項目を整理：
+     - **ディレクトリ**: 各ディレクトリパスの設定
+     - **画像処理**: WebP品質、圧縮方法、サポート拡張子
+     - **ログ**: ログディレクトリ、ファイル名、レベル
+     - **パターン**: 画像・コード抽出の正規表現パターン
+     - **詳細**: WIDTH_MAPなどの複雑な設定（表示のみ）
+   - 「適用」で設定を反映、「保存して閉じる」で保存後終了
+   - 設定変更時は自動でconfig.jsonのバックアップを作成
+   - 全設定がconfig.jsonファイルで統一管理される
+
+6. **その他機能**
+   - 「ログクリア」: ログ表示をクリア
+   - 「設定保存」: 現在の設定を保存
+   - 設定は次回起動時に自動復元
+
+### コマンドライン版の使用方法
+
+#### DOCXファイルの形式
+
+テーブル内で以下の形式で画像名を記述してください：
+
+| コード | 画像名 |
+|--------|--------|
+| COMFRPTC09 | ＜画像＞image-name-01 |
+| GSTFRPTA15 | ＜画像名＞image-name-02 |
+
+**対応パターン:**
+- `＜画像＞image-name-01`
+- `＜画像名＞image-name-02`
+- `＜画像1＞image-name-03`
+- `＜画像（補足）＞image-name-04`
+- `画像名：image-name-05` (全角コロン)
+- `画像名:image-name-06` (半角コロン)
+
+#### 設定カスタマイズ
+
+設定は`config/config.json`ファイルまたはGUIの詳細設定画面から変更できます：
+
+**config/config.json例:**
+```json
+{
+  "directories": {
+    "docx_directory": "data/input/docx",
+    "output_base_dir": "data/output",
+    "images_dir": "data/input/images",
+    "html_dir": "data/input/html"
+  },
+  "image_processing": {
+    "webp_quality": 100,
+    "webp_method": 6,
+    "webp_lossless": true,
+    "supported_extensions": ["webp", "WEBP", "jpg", "png", "JPG", "PNG"]
+  },
+  "width_map": {
+    "COMFRPTC09": [[1800, 1200], [1200, 800], [900, 600], [500, 333]],
+    "COMFRPTC12": [[1800, 1200], [1200, 800], [900, 600], [500, 333]],
+    "GSTFRPTA15": [[900, 0], [500, 0]]
+  },
+  "min_width_size_map": {
+    "COMFRPTC12": {
+      "1562": [1800, 900],
+      "1041": [1200, 900],
+      "781": 900,
+      "768": 500,
+      "source_default": 900,
+      "img_default": 500
+    }
+  }
+}
+```
+
+**GUI設定画面での変更:**
+- 「詳細設定」ボタンから各種設定をGUIで編集可能
+- 設定変更は即座にconfig.jsonに反映される
+
+## 📁 出力構造
+
+```
+data/output/
+├── ファイル名1/
+│   ├── image-name-011800.webp
+│   ├── image-name-011200.webp
+│   └── image-name-01900.webp
+└── ファイル名2/
+    └── image-name-021800.webp
+```
+
+## 🔄 HTML画像名置換機能
+
+### 動作概要
+
+1. **自動検索**: `html/`ディレクトリでDOCXファイル名と同じHTMLファイルを検索
+2. **画像名抽出**: DOCXから抽出した画像名情報を取得
+3. **メディアクエリ解析**: HTMLの`<source>`タグのメディアクエリを解析
+4. **レスポンシブ対応**: 画面サイズと解像度に応じて最適な画像サイズを選択
+5. **自動置換**: HTML内の画像ファイル名をWebP形式に置換
+6. **ファイル更新**: 置換後のHTMLファイルを保存
+
+### メディアクエリベース置換
+
+**対応コード**: COMFRPTC12, COMFRPTC09, COMFRPTC14, COMFRPTC13, COMFRPTC34, COMFRPTC15, COMFRPTC23, COMFRPTC17, COMFRPTC21, GSTFRPTA15, COMFRPTC03, COMFRPTC30, THUMBNAIL
+
+**置換例:**
+
+**置換前:**
+```html
+<source media="(min-width: 1562px) and (min-resolution: 2dppx)"
+        data-srcset="sample-image-01.jpg">
+<img data-src="sample-image-01.jpg" alt="サンプル画像">
+```
+
+**置換後（COMFRPTC12設定の場合）:**
+```html
+<source media="(min-width: 1562px) and (min-resolution: 2dppx)"
+        data-srcset="sample-image-011800.webp">  <!-- カーセル版の場合 -->
+<img data-src="sample-image-01500.webp" alt="サンプル画像">
+```
+
+### カーセル判定機能（COMFRPTC12専用）
+
+COMFRPTC12では、カーセル版と通常版で異なる画像サイズを使用します：
+
+- **カーセル版**: 大きいサイズ（1800px, 1200px）
+- **通常版**: 小さいサイズ（900px）
+
+**判定ロジック:**
+1. 画像タグの位置から上方向に最大50行まで探索
+2. `_carousel`が見つかった場合 → カーセル版
+3. `mCommonsectionImgitem`が見つかった場合 → 通常版
+4. 50行探しても見つからない場合 → 通常版
+
+## 🛠️ トラブルシューティング
+
+### GUI版のトラブルシューティング 🆕
+
+| 問題 | 解決方法 |
+|------|----------|
+| GUI起動しない | `python gui_main.py`で実行。Tkinterが利用可能か確認 |
+| ディレクトリ選択できない | 権限を確認。管理者権限で実行を試す |
+| ログが表示されない | アプリケーションを再起動 |
+| エラータブに切り替わらない | エラーレベルのメッセージが発生した場合のみ自動切り替え |
+| 設定が保存されない | 書き込み権限を確認。`gui_settings.json`が作成されるか確認 |
+| 処理が停止しない | 「停止」ボタンをクリック。処理完了まで待機が必要な場合あり |
+| exe版が起動しない | Windows Defenderの警告を確認。セキュリティ設定を調整 |
+
+### 共通のトラブルシューティング
+
+| 問題 | 解決方法 |
+|------|----------|
+| 画像ファイルが見つからない | `images/`ディレクトリにファイルが存在するか確認 |
+| DOCXファイルが読み込めない | ファイルが破損していないか確認 |
+| 変換に失敗する | 画像ファイルが破損していないか、対応形式か確認 |
+| 再変換したい | `output/`内の対象フォルダを削除してから再実行 |
+| HTML置換が動作しない | HTMLファイル名がDOCXファイル名と一致しているか確認 |
+| メディアクエリベース置換が動作しない | コードがMIN_WIDTH_SIZE_MAPに定義されているか確認 |
+| カーセル判定が正しく動作しない | HTML内に`_carousel`または`mCommonsectionImgitem`が含まれているか確認 |
+| エラーの詳細を確認したい | `.logs/LOG.log`ファイルまたはGUI版のエラータブで確認 |
+| 存在しない画像を確認したい | `.logs/missing_images.txt`で存在しない画像一覧を確認 |
+| モジュールインポートエラー | 必要なパッケージ（python-docx, Pillow）がインストールされているか確認 |
+
+## 📊 対応形式
+
+### 入力形式
+- JPG/JPEG
+- PNG
+- WebP
+
+### 出力形式
+- WebP（複数サイズ）
+
+## 🏗️ アーキテクチャ
+
+### モジュラー設計
+
+リファクタリングにより、以下のクラスベース設計を採用しています：
+
+- **`Img2WebpProcessor`**: メイン処理を統合する中央クラス
+- **`DocxAnalyzer`**: DOCX解析を担当
+- **`ImageProcessor`**: 画像変換処理を担当
+- **`HtmlProcessor`**: HTML画像名置換を担当
+- **`FileManager`**: ファイル操作を担当
+
+### エラーハンドリング
+
+カスタム例外クラスによる詳細なエラー管理：
+
+- **`Img2WebpError`**: 基底例外クラス
+- **`DocxFileError`**: DOCXファイル関連エラー
+- **`ImageFileError`**: 画像ファイル関連エラー
+- **`ImageConversionError`**: 画像変換エラー
+- **`HtmlProcessingError`**: HTML処理エラー
+- **`ConfigurationError`**: 設定関連エラー
+
+## 📝 ログ機能
+
+処理の詳細情報は以下のファイルに保存されます：
+
+- `.logs/LOG.log`: 詳細な処理ログ
+- `.logs/all_image_names.json`: 全ファイルの画像名情報
+- `.logs/all_converted_images.txt`: 変換済み画像ファイル一覧
+- `.logs/missing_images.txt`: 存在しない画像ファイル一覧
+
+**注意**: ログファイルのパスは `config/config.json` の `directories.log_dir` で設定可能です。
+
+## 🔧 必要な環境
+
+### 基本環境
+- **Python**: 3.7以上
+- **パッケージ**:
+  - `python-docx`: DOCXファイル読み込み
+  - `Pillow`: 画像処理
+
+### GUI版追加要件
+- **Tkinter**: Python標準ライブラリ（通常は自動インストール）
+- **PyInstaller**: exe化時のみ必要（`pip install pyinstaller`）
+
+### 対応OS
+- **Windows**: ✅ 完全対応（exe化対応）
+- **macOS**: ✅ GUI対応（exe化は未対応）
+- **Linux**: ✅ GUI対応（exe化は未対応）
+
+## 📈 更新履歴
+
+- **v1.0**: 初期バージョン（DOCX解析とWebP変換）
+- **v1.1**: ログ機能追加
+- **v1.2**: 複数サイズ対応
+- **v1.3**: アスペクト比保持機能
+- **v1.4**: HTML画像名置換機能追加
+- **v1.5**: メディアクエリベースHTML置換機能追加
+- **v1.6**: 画像名パターン拡張（半角コロン対応）
+- **v1.7**: COMFRPTC12専用カーセル判定機能追加
+- **v1.8**: 従来の順次置換処理を削除、メディアクエリベース処理に統一
+- **v2.0**: 🎉 **大規模リファクタリング**
+  - モジュラー設計への移行（クラスベース）
+  - カスタム例外クラスの導入
+  - エラーハンドリングの強化
+  - コード品質の大幅改善（main.py 614行 → 160行）
+  - 保守性・テスタビリティの向上
+- **v2.1**: 🖥️ **GUI版リリース**
+  - Tkinterベースの直感的なGUI
+  - リアルタイム進捗表示
+  - **タブ式ログ表示**（全ログ・エラー分離）
+  - **エラー自動検出**（エラー発生時に自動切り替え）
+  - 設定保存・復元機能
+  - exe化対応（Windows配布用）
+  - 処理制御機能（開始・停止）
+  - WebP品質のスライダー調整
+- **v2.2**: 📄 **JSON設定システム**
+  - 全設定をconfig.jsonで統一管理
+  - GUI詳細設定画面でJSON設定を編集可能
+  - 設定の保存・復元がより簡単に
+  - 後方互換性を維持しながら設定管理を改善
+- **v3.0**: 🏗️ **プロジェクト構成大幅見直し** 🆕
+  - モジュラー設計の完全実装（gui/core/config/utils分離）
+  - データディレクトリの整理（input/output/samples分離）
+  - ビルドシステムの統一化
+  - エントリーポイントの明確化（main.py/gui.py）
+  - 設定ファイルの集約化（config/ディレクトリ）
+  - 保守性・拡張性の大幅向上
+
+## 🤝 貢献
+
+バグ報告や機能改善の提案は、IssueまたはPull Requestでお願いします。
+
+## 📄 ライセンス
+
+このプロジェクトのライセンスについては、プロジェクトのライセンスファイルを参照してください。

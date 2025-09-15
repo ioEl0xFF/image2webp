@@ -1,0 +1,6 @@
+# img2webp 開発・ビルド用依存関係
+-r requirements.txt
+pyinstaller>=5.0.0
+pytest>=6.0.0
+black>=21.0.0
+flake8>=3.8.0

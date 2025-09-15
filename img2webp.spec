@@ -4,7 +4,9 @@ block_cipher = None
 
 # データファイルとフォルダ
 datas = [
-    ('src', 'src'),
+    ('src/img2webp', 'img2webp'),
+    ('config/config.json', 'config'),
+    ('config/gui_settings.json', 'config'),
 ]
 
 # 隠されたインポート
@@ -23,11 +25,16 @@ hiddenimports = [
     'PIL',
     'PIL.Image',
     'PIL.ImageTk',
+    'img2webp',
+    'img2webp.gui',
+    'img2webp.core',
+    'img2webp.config',
+    'img2webp.utils',
 ]
 
 a = Analysis(
-    ['gui_main.py'],
-    pathex=[],
+    ['gui.py'],
+    pathex=['src'],
     binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,
@@ -57,11 +64,11 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,  # GUIアプリケーションなのでコンソールを非表示
+    console=False,
     disable_windowed_traceback=False,
+    argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='icon.ico' if os.path.exists('icon.ico') else None,
-    version='version_info.txt' if os.path.exists('version_info.txt') else None,
+    icon=None,
 )

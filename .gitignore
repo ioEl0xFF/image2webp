@@ -1,35 +1,68 @@
-# 画像ファイル
+# ================================
+# img2webp プロジェクト専用設定
+# ================================
+
+# 処理対象データファイル（実際のデータは除外、サンプルは含める）
+data/input/docx/*
+!data/input/docx/.gitkeep
+data/input/images/*
+!data/input/images/.gitkeep
+data/input/html/*
+!data/input/html/.gitkeep
+data/output/*
+!data/output/.gitkeep
+
+# 画像ファイル（サンプル以外）
 *.jpg
+*.jpeg
 *.png
 *.webp
+*.JPG
+*.JPEG
+*.PNG
+*.WEBP
 
 # Word文書ファイル
 *.docx
+~$*.docx
 
 # HTMLファイル
 *.html
 
-# zipファイル
+# アーカイブファイル
 *.zip
+*.rar
+*.7z
 
-# ログ
+# ================================
+# ログとレポートファイル
+# ================================
+
+# プロジェクト固有ログ
+.logs/
 converted_images.txt
 all_converted_images.txt
 image_names.json
 all_image_names.json
+missing_images.txt
 
-# backup files
+# 設定バックアップファイル
+config/*.backup
 *.backup
 
+# ================================
 # Python関連
+# ================================
+
+# バイトコードファイル
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+
+# 配布・ビルド関連
 .Python
-build/
 develop-eggs/
-dist/
 downloads/
 eggs/
 .eggs/
@@ -39,30 +72,106 @@ parts/
 sdist/
 var/
 wheels/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
 
+# PyInstallerビルド関連（配布用は除外しない）
+# 一時ファイルのみ除外
+build/img2webp/
+# dist/ は配布用なので除外しない
+
+# PyInstaller関連
+*.manifest
+*.spec
+
+# 単体テスト・カバレッジ
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
 # 仮想環境
 venv/
 env/
 ENV/
+env.bak/
+venv.bak/
 
-# IDE関連
+# ================================
+# 開発環境・IDE関連
+# ================================
+
+# Visual Studio Code
 .vscode/
+
+# PyCharm
 .idea/
+
+# Vim/Emacs
 *.swp
 *.swo
+*~
 
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# ================================
 # OS関連
+# ================================
+
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
 Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# ================================
+# 一時・ログファイル
+# ================================
 
 # ログファイル
 *.log
-*.txt
 
 # 一時ファイル
 *.tmp
 *.temp
+*.bak
+
+# テキストファイル（設定ファイル以外）
+*.txt
+!requirements*.txt
+!README.txt
+
+# ================================
+# プロジェクト固有の除外
+# ================================
+
+# GUI設定（個人設定のため除外）
+config/gui_settings.json
+
+# テスト出力
+test_output/
+
+# ドキュメント生成ファイル
+docs/_build/
