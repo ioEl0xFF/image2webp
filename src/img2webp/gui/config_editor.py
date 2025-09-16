@@ -61,22 +61,17 @@ class ConfigEditorWindow:
 
     def _init_variables(self):
         """設定値を保持する変数を初期化"""
-        # ディレクトリ設定
-        self.docx_directory = tk.StringVar(value=config_loader.get("directories.docx_directory", "docxs"))
-        self.output_base_dir = tk.StringVar(value=config_loader.get("directories.output_base_dir", "output"))
-        self.images_dir = tk.StringVar(value=config_loader.get("directories.images_dir", "images"))
-        self.html_dir = tk.StringVar(value=config_loader.get("directories.html_dir", "html"))
+        # 高度なディレクトリ設定
+        self.log_dir = tk.StringVar(value=config_loader.get("directories.log_dir", ".logs"))
 
-        # 画像処理設定
-        self.webp_quality = tk.IntVar(value=config_loader.get("image_processing.webp_quality", 100))
+        # 高度な画像処理設定
         self.webp_method = tk.IntVar(value=config_loader.get("image_processing.webp_method", 6))
         self.webp_lossless = tk.BooleanVar(value=config_loader.get("image_processing.webp_lossless", True))
 
         # ログ設定
-        self.log_dir = tk.StringVar(value=config_loader.get("directories.log_dir", ".logs"))
         self.log_file = tk.StringVar(value=config_loader.get("logging.log_file", "LOG.log"))
         self.log_level = tk.StringVar(value=config_loader.get("logging.log_level", "INFO"))
-        
+
         # ログローテーション設定
         log_max_bytes = config_loader.get("logging.log_max_bytes", 10485760)
         self.log_max_mb = tk.StringVar(value=str(log_max_bytes // (1024 * 1024)))  # バイトをMBに変換
@@ -133,25 +128,15 @@ class ConfigEditorWindow:
 
         dir_frame.columnconfigure(1, weight=1)
 
-        # DOCXディレクトリ
-        ttk.Label(dir_frame, text="DOCXディレクトリ:").grid(row=0, column=0, sticky=tk.W, pady=5)
-        ttk.Entry(dir_frame, textvariable=self.docx_directory).grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
+        # 注意事項を表示
+        note_text = ("注意: 基本的なディレクトリ設定（DOCX、画像、HTML、出力先）は\n"
+                    "メイン画面で設定できます。ここでは高度な設定のみ表示しています。")
+        ttk.Label(dir_frame, text=note_text, foreground="blue",
+                 font=('Arial', 9)).grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 20))
 
-        # 出力ベースディレクトリ
-        ttk.Label(dir_frame, text="出力ベースディレクトリ:").grid(row=1, column=0, sticky=tk.W, pady=5)
-        ttk.Entry(dir_frame, textvariable=self.output_base_dir).grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
-
-        # 画像ディレクトリ
-        ttk.Label(dir_frame, text="画像ディレクトリ:").grid(row=2, column=0, sticky=tk.W, pady=5)
-        ttk.Entry(dir_frame, textvariable=self.images_dir).grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
-
-        # HTMLディレクトリ
-        ttk.Label(dir_frame, text="HTMLディレクトリ:").grid(row=3, column=0, sticky=tk.W, pady=5)
-        ttk.Entry(dir_frame, textvariable=self.html_dir).grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
-
-        # ログディレクトリ
-        ttk.Label(dir_frame, text="ログディレクトリ:").grid(row=4, column=0, sticky=tk.W, pady=5)
-        ttk.Entry(dir_frame, textvariable=self.log_dir).grid(row=4, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
+        # ログディレクトリのみ残す
+        ttk.Label(dir_frame, text="ログディレクトリ:").grid(row=1, column=0, sticky=tk.W, pady=5)
+        ttk.Entry(dir_frame, textvariable=self.log_dir).grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
 
     def _create_image_processing_tab(self):
         """画像処理設定タブを作成"""
@@ -160,17 +145,13 @@ class ConfigEditorWindow:
 
         img_frame.columnconfigure(1, weight=1)
 
-        # WebP品質
-        ttk.Label(img_frame, text="WebP品質 (1-100):").grid(row=0, column=0, sticky=tk.W, pady=5)
-        quality_frame = ttk.Frame(img_frame)
-        quality_frame.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
-        quality_frame.columnconfigure(0, weight=1)
+        # 注意事項を表示
+        note_text = ("注意: 基本的な画像処理設定（WebP品質、マルチスレッド設定）は\n"
+                    "メイン画面で設定できます。ここでは高度な設定のみ表示しています。")
+        ttk.Label(img_frame, text=note_text, foreground="blue",
+                 font=('Arial', 9)).grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 20))
 
-        ttk.Scale(quality_frame, from_=1, to=100, variable=self.webp_quality,
-                 orient=tk.HORIZONTAL).grid(row=0, column=0, sticky=(tk.W, tk.E))
-        ttk.Label(quality_frame, textvariable=self.webp_quality).grid(row=0, column=1, padx=(10, 0))
-
-        # WebP圧縮方法
+        # WebP圧縮方法（高度な設定として残す）
         ttk.Label(img_frame, text="WebP圧縮方法 (0-6):").grid(row=1, column=0, sticky=tk.W, pady=5)
         method_frame = ttk.Frame(img_frame)
         method_frame.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
@@ -180,7 +161,7 @@ class ConfigEditorWindow:
                  orient=tk.HORIZONTAL).grid(row=0, column=0, sticky=(tk.W, tk.E))
         ttk.Label(method_frame, textvariable=self.webp_method).grid(row=0, column=1, padx=(10, 0))
 
-        # WebPロスレス
+        # WebPロスレス（高度な設定として残す）
         ttk.Checkbutton(img_frame, text="WebPロスレス圧縮",
                        variable=self.webp_lossless).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=5)
 
@@ -188,6 +169,12 @@ class ConfigEditorWindow:
         ttk.Label(img_frame, text="サポートする拡張子:").grid(row=3, column=0, sticky=tk.W, pady=5)
         ttk.Entry(img_frame, textvariable=self.supported_extensions).grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
         ttk.Label(img_frame, text="カンマ区切りで入力", font=('Arial', 8)).grid(row=4, column=1, sticky=tk.W, padx=(10, 0))
+
+        # 説明
+        explanation_text = ("WebP圧縮方法: 0=高速・低品質、6=低速・高品質\n"
+                           "ロスレス圧縮: ファイルサイズは大きくなりますが画質劣化がありません")
+        ttk.Label(img_frame, text=explanation_text, font=('Arial', 8), foreground='gray',
+                 wraplength=400).grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(10, 0))
 
     def _create_log_tab(self):
         """ログ設定タブを作成"""
@@ -211,11 +198,11 @@ class ConfigEditorWindow:
         ttk.Label(log_frame, text="ログファイル最大サイズ (MB):").grid(row=2, column=0, sticky=tk.W, pady=5)
         log_max_mb_entry = ttk.Entry(log_frame, textvariable=self.log_max_mb)
         log_max_mb_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
-        
+
         ttk.Label(log_frame, text="バックアップファイル数:").grid(row=3, column=0, sticky=tk.W, pady=5)
         log_backup_entry = ttk.Entry(log_frame, textvariable=self.log_backup_count)
         log_backup_entry.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
-        
+
         # 説明ラベル
         ttk.Label(log_frame, text="ログファイルが指定サイズを超えると自動的にローテーションされます",
                  font=('Arial', 8), foreground='gray').grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(10, 0))
@@ -306,26 +293,21 @@ class ConfigEditorWindow:
 
         self.advanced_text.config(state=tk.DISABLED)
 
+
     def _apply_config(self):
         """設定を適用"""
         try:
             # バックアップを作成
             self._create_backup()
 
-            # 設定値を更新
-            config_loader.set("directories.docx_directory", self.docx_directory.get())
-            config_loader.set("directories.output_base_dir", self.output_base_dir.get())
-            config_loader.set("directories.images_dir", self.images_dir.get())
-            config_loader.set("directories.html_dir", self.html_dir.get())
+            # 設定値を更新（トップ画面にない高度な設定のみ）
             config_loader.set("directories.log_dir", self.log_dir.get())
-
-            config_loader.set("image_processing.webp_quality", self.webp_quality.get())
             config_loader.set("image_processing.webp_method", self.webp_method.get())
             config_loader.set("image_processing.webp_lossless", self.webp_lossless.get())
 
             config_loader.set("logging.log_file", self.log_file.get())
             config_loader.set("logging.log_level", self.log_level.get())
-            
+
             # ログローテーション設定を更新
             log_max_mb = int(self.log_max_mb.get())
             config_loader.set("logging.log_max_bytes", log_max_mb * 1024 * 1024)  # MBをバイトに変換
@@ -362,20 +344,12 @@ class ConfigEditorWindow:
     def _reset_config(self):
         """設定をリセット"""
         if messagebox.askyesno("確認", "設定を初期値にリセットしますか？"):
-            # 初期値に戻す
-            self.docx_directory.set("docxs")
-            self.output_base_dir.set("output")
-            self.images_dir.set("images")
-            self.html_dir.set("html")
+            # 高度な設定のみ初期値に戻す
             self.log_dir.set(".logs")
-
-            self.webp_quality.set(100)
             self.webp_method.set(6)
             self.webp_lossless.set(True)
-
             self.log_file.set("LOG.log")
             self.log_level.set("INFO")
-
             self.supported_extensions.set("webp, WEBP, jpg, png, JPG, PNG")
 
             # テキストエリアをリセット

@@ -108,9 +108,12 @@ class Img2WebpProcessor:
     def _cleanup_resources(self):
         """リソースのクリーンアップ"""
         try:
-            # 画像プロセッサーのリセット
+            # 画像プロセッサーのリセット（マルチスレッド対応）
             if hasattr(self, '_image_processor'):
-                self._image_processor._is_cancelled = False
+                with self._image_processor._thread_lock:
+                    self._image_processor._is_cancelled = False
+                    self._image_processor._progress_counter = 0
+                    self._image_processor._total_images = 0
 
             # ログハンドラーのクリーンアップ
             if hasattr(self, '_logger'):
@@ -134,9 +137,11 @@ class Img2WebpProcessor:
         return docx_files
 
     def _process_all_files(self, docx_files: List[str]) -> Tuple[List[str], List[Dict[str, str]]]:
-        """全ファイルを処理"""
+        """全ファイルを処理（マルチスレッド対応のプログレス表示付き）"""
         all_converted_images = []
         all_image_names = []
+
+        self._logger.info(f"全体処理開始 - 対象ファイル数: {len(docx_files)}")
 
         for file_index, docx_file in enumerate(docx_files, start=1):
             # 中断チェック
@@ -145,12 +150,17 @@ class Img2WebpProcessor:
                 break
 
             try:
+                self._logger.info(f"=== ファイル {file_index}/{len(docx_files)} 処理開始 ===")
+                
                 converted_images, image_names = self._process_single_file(
                     docx_file, file_index, len(docx_files)
                 )
 
                 all_converted_images.extend(converted_images)
                 all_image_names.extend(image_names)
+                
+                self._logger.info(f"=== ファイル {file_index}/{len(docx_files)} 処理完了 - "
+                                f"変換画像数: {len(converted_images)} ===")
 
             except Exception as e:
                 self._logger.error(f"ファイル処理エラー: {docx_file} - {e}")

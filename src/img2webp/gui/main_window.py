@@ -35,6 +35,10 @@ class Img2WebpGUI:
         self.output_dir = tk.StringVar()
         self.webp_quality = tk.IntVar(value=WEBP_QUALITY)
 
+        # マルチスレッド設定
+        self.enable_multithreading = tk.BooleanVar(value=config_loader.get("image_processing.enable_multithreading", True))
+        self.max_workers = tk.IntVar(value=config_loader.get("image_processing.max_workers", 4))
+
         # 処理制御
         self.is_processing = False
         self.processor_thread = None
@@ -73,7 +77,7 @@ class Img2WebpGUI:
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(1, weight=1)
-        main_frame.rowconfigure(6, weight=1)
+        main_frame.rowconfigure(8, weight=1)
 
         # タイトル
         title_label = ttk.Label(main_frame, text="img2webp - 画像変換ツール",
@@ -92,16 +96,16 @@ class Img2WebpGUI:
         # 進捗バー
         self.progress_var = tk.StringVar(value="準備完了")
         self.progress_bar = ttk.Progressbar(main_frame, mode='determinate')
-        self.progress_bar.grid(row=5, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(10, 5))
+        self.progress_bar.grid(row=7, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(10, 5))
 
         progress_label = ttk.Label(main_frame, textvariable=self.progress_var)
-        progress_label.grid(row=5, column=0, columnspan=3, pady=(0, 10))
+        progress_label.grid(row=7, column=0, columnspan=3, pady=(0, 10))
 
         # 詳細進捗情報
         self.detail_progress_var = tk.StringVar(value="")
         detail_progress_label = ttk.Label(main_frame, textvariable=self.detail_progress_var,
                                         font=('Arial', 9), foreground='gray')
-        detail_progress_label.grid(row=5, column=0, columnspan=3, pady=(25, 0))
+        detail_progress_label.grid(row=7, column=0, columnspan=3, pady=(25, 0))
 
         # ログ表示セクション
         self._create_log_section(main_frame)
@@ -115,23 +119,35 @@ class Img2WebpGUI:
 
         # DOCXディレクトリ
         ttk.Label(file_frame, text="DOCXファイル:").grid(row=0, column=0, sticky=tk.W, pady=2)
-        ttk.Entry(file_frame, textvariable=self.docx_dir, width=50).grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
-        ttk.Button(file_frame, text="選択", command=lambda: self._select_directory(self.docx_dir)).grid(row=0, column=2)
+        self.docx_entry = ttk.Entry(file_frame, textvariable=self.docx_dir, width=50)
+        self.docx_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
+        self.docx_entry.bind('<FocusOut>', self._on_path_change)
+        self.docx_button = ttk.Button(file_frame, text="選択", command=lambda: self._select_directory(self.docx_dir))
+        self.docx_button.grid(row=0, column=2)
 
         # 画像ディレクトリ
         ttk.Label(file_frame, text="画像ファイル:").grid(row=1, column=0, sticky=tk.W, pady=2)
-        ttk.Entry(file_frame, textvariable=self.images_dir, width=50).grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
-        ttk.Button(file_frame, text="選択", command=lambda: self._select_directory(self.images_dir)).grid(row=1, column=2)
+        self.images_entry = ttk.Entry(file_frame, textvariable=self.images_dir, width=50)
+        self.images_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
+        self.images_entry.bind('<FocusOut>', self._on_path_change)
+        self.images_button = ttk.Button(file_frame, text="選択", command=lambda: self._select_directory(self.images_dir))
+        self.images_button.grid(row=1, column=2)
 
         # HTMLディレクトリ（オプション）
         ttk.Label(file_frame, text="HTMLファイル:").grid(row=2, column=0, sticky=tk.W, pady=2)
-        ttk.Entry(file_frame, textvariable=self.html_dir, width=50).grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
-        ttk.Button(file_frame, text="選択", command=lambda: self._select_directory(self.html_dir)).grid(row=2, column=2)
+        self.html_entry = ttk.Entry(file_frame, textvariable=self.html_dir, width=50)
+        self.html_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
+        self.html_entry.bind('<FocusOut>', self._on_path_change)
+        self.html_button = ttk.Button(file_frame, text="選択", command=lambda: self._select_directory(self.html_dir))
+        self.html_button.grid(row=2, column=2)
 
         # 出力ディレクトリ
         ttk.Label(file_frame, text="出力先:").grid(row=3, column=0, sticky=tk.W, pady=2)
-        ttk.Entry(file_frame, textvariable=self.output_dir, width=50).grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
-        ttk.Button(file_frame, text="選択", command=lambda: self._select_directory(self.output_dir)).grid(row=3, column=2)
+        self.output_entry = ttk.Entry(file_frame, textvariable=self.output_dir, width=50)
+        self.output_entry.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(5, 5))
+        self.output_entry.bind('<FocusOut>', self._on_path_change)
+        self.output_button = ttk.Button(file_frame, text="選択", command=lambda: self._select_directory(self.output_dir))
+        self.output_button.grid(row=3, column=2)
 
     def _create_settings_section(self, parent):
         """設定セクションを作成"""
@@ -143,16 +159,59 @@ class Img2WebpGUI:
         quality_frame = ttk.Frame(settings_frame)
         quality_frame.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
 
-        ttk.Scale(quality_frame, from_=1, to=100, variable=self.webp_quality,
-                 orient=tk.HORIZONTAL, length=200).grid(row=0, column=0, sticky=(tk.W, tk.E))
+        self.quality_scale = ttk.Scale(quality_frame, from_=1, to=100, variable=self.webp_quality,
+                 orient=tk.HORIZONTAL, length=200, command=self._on_quality_change)
+        self.quality_scale.grid(row=0, column=0, sticky=(tk.W, tk.E))
         ttk.Label(quality_frame, textvariable=self.webp_quality).grid(row=0, column=1, padx=(10, 0))
 
         quality_frame.columnconfigure(0, weight=1)
 
+        # 区切り線
+        ttk.Separator(settings_frame, orient='horizontal').grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(15, 10))
+
+        # マルチスレッド設定セクション
+        ttk.Label(settings_frame, text="マルチスレッド処理:", font=('Arial', 10, 'bold')).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(0, 5))
+
+        # マルチスレッド有効化チェックボックス
+        self.multithread_enable_frame = ttk.Frame(settings_frame)
+        self.multithread_enable_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=2)
+
+        ttk.Checkbutton(self.multithread_enable_frame, text="マルチスレッド処理を有効にする",
+                       variable=self.enable_multithreading,
+                       command=self._on_multithread_toggle).grid(row=0, column=0, sticky=tk.W)
+
+        # CPU情報表示
+        import multiprocessing
+        cpu_count = multiprocessing.cpu_count()
+        ttk.Label(self.multithread_enable_frame, text=f"(システムCPU: {cpu_count}コア)",
+                 font=('Arial', 8), foreground='gray').grid(row=0, column=1, padx=(10, 0), sticky=tk.W)
+
+        # 最大スレッド数設定
+        ttk.Label(settings_frame, text="最大スレッド数:").grid(row=4, column=0, sticky=tk.W, pady=(5, 2))
+
+        self.workers_frame = ttk.Frame(settings_frame)
+        self.workers_frame.grid(row=4, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(5, 2))
+        self.workers_frame.columnconfigure(0, weight=1)
+
+        self.workers_scale = ttk.Scale(self.workers_frame, from_=1, to=16, variable=self.max_workers,
+                                      orient=tk.HORIZONTAL, length=200, command=self._on_workers_change)
+        self.workers_scale.grid(row=0, column=0, sticky=(tk.W, tk.E))
+
+        self.workers_label = ttk.Label(self.workers_frame, text=f"{self.max_workers.get()}")
+        self.workers_label.grid(row=0, column=1, padx=(10, 0))
+
+        # 推奨値表示
+        recommended_workers = min(4, cpu_count)
+        ttk.Label(settings_frame, text=f"推奨値: {recommended_workers} (CPUコア数以下)",
+                 font=('Arial', 8), foreground='gray').grid(row=5, column=1, sticky=tk.W, padx=(10, 0))
+
+        # 初期状態の設定（UI作成完了後に実行）
+        self.root.after_idle(self._on_multithread_toggle)
+
     def _create_control_section(self, parent):
         """制御ボタンセクションを作成"""
         control_frame = ttk.Frame(parent)
-        control_frame.grid(row=3, column=0, columnspan=3, pady=(0, 10))
+        control_frame.grid(row=6, column=0, columnspan=3, pady=(10, 10))
 
         self.start_button = ttk.Button(control_frame, text="変換開始",
                                       command=self._start_conversion, style="Accent.TButton")
@@ -168,16 +227,14 @@ class Img2WebpGUI:
         ttk.Button(control_frame, text="ログクリア",
                   command=self._clear_log).grid(row=0, column=2, padx=(0, 10))
 
-        ttk.Button(control_frame, text="設定保存",
-                  command=self._save_settings).grid(row=0, column=3, padx=(0, 10))
 
         ttk.Button(control_frame, text="詳細設定",
-                  command=self._open_config_editor).grid(row=0, column=4)
+                  command=self._open_config_editor).grid(row=0, column=3)
 
     def _create_log_section(self, parent):
         """ログ表示セクションを作成"""
         log_frame = ttk.LabelFrame(parent, text="処理ログ", padding="5")
-        log_frame.grid(row=6, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 0))
+        log_frame.grid(row=8, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 0))
         log_frame.columnconfigure(0, weight=1)
         log_frame.rowconfigure(0, weight=1)
 
@@ -215,6 +272,9 @@ class Img2WebpGUI:
         directory = filedialog.askdirectory(initialdir=var.get())
         if directory:
             var.set(directory)
+            # ディレクトリが変更されたら自動保存
+            if not self.is_processing:
+                self._auto_save_all_settings()
 
     def _start_conversion(self):
         """変換処理開始"""
@@ -233,6 +293,9 @@ class Img2WebpGUI:
         self.progress_bar.start(10)
         self.progress_var.set("処理中...")
         self.detail_progress_var.set("処理を開始しています...")
+
+        # 設定コントロールを無効化
+        self._disable_settings_controls()
 
         # ログクリア
         self._clear_log()
@@ -293,7 +356,9 @@ class Img2WebpGUI:
             'images_dir': self.images_dir.get(),
             'html_dir': self.html_dir.get(),
             'output_dir': self.output_dir.get(),
-            'webp_quality': self.webp_quality.get()
+            'webp_quality': self.webp_quality.get(),
+            'enable_multithreading': self.enable_multithreading.get(),
+            'max_workers': self.max_workers.get()
         }
 
     def _validate_inputs(self):
@@ -361,6 +426,56 @@ class Img2WebpGUI:
         self.progress_bar.stop()
         self.progress_var.set("準備完了")
         self.detail_progress_var.set("")
+
+        # 設定コントロールを再度有効化
+        self._enable_settings_controls()
+
+    def _enable_settings_controls(self):
+        """設定コントロールを有効化"""
+        # エントリーフィールドを有効化
+        self.docx_entry.config(state=tk.NORMAL)
+        self.images_entry.config(state=tk.NORMAL)
+        self.html_entry.config(state=tk.NORMAL)
+        self.output_entry.config(state=tk.NORMAL)
+
+        # ディレクトリ選択ボタンを有効化
+        self.docx_button.config(state=tk.NORMAL)
+        self.images_button.config(state=tk.NORMAL)
+        self.html_button.config(state=tk.NORMAL)
+        self.output_button.config(state=tk.NORMAL)
+
+        # スケールコントロールを有効化
+        self.quality_scale.config(state=tk.NORMAL)
+
+        # マルチスレッド設定を有効化（条件付き）
+        self._on_multithread_toggle()
+
+    def _disable_settings_controls(self):
+        """設定コントロールを無効化"""
+        # エントリーフィールドを無効化
+        self.docx_entry.config(state=tk.DISABLED)
+        self.images_entry.config(state=tk.DISABLED)
+        self.html_entry.config(state=tk.DISABLED)
+        self.output_entry.config(state=tk.DISABLED)
+
+        # ディレクトリ選択ボタンを無効化
+        self.docx_button.config(state=tk.DISABLED)
+        self.images_button.config(state=tk.DISABLED)
+        self.html_button.config(state=tk.DISABLED)
+        self.output_button.config(state=tk.DISABLED)
+
+        # スケールコントロールを無効化
+        self.quality_scale.config(state=tk.DISABLED)
+
+        # マルチスレッド設定を無効化
+        if hasattr(self, 'multithread_enable_frame'):
+            for child in self.multithread_enable_frame.winfo_children():
+                if isinstance(child, ttk.Checkbutton):
+                    child.config(state=tk.DISABLED)
+
+        if hasattr(self, 'workers_scale'):
+            self.workers_scale.config(state=tk.DISABLED)
+            self.workers_label.config(foreground='gray')
 
     def _check_log_queue(self):
         """ログキューを監視してログを表示"""
@@ -431,6 +546,10 @@ class Img2WebpGUI:
             config_loader.set("directories.output_base_dir", Path(self.output_dir.get()).name)
             config_loader.set("image_processing.webp_quality", self.webp_quality.get())
 
+            # マルチスレッド設定も保存
+            config_loader.set("image_processing.enable_multithreading", self.enable_multithreading.get())
+            config_loader.set("image_processing.max_workers", self.max_workers.get())
+
             # 設定を保存
             config_loader.save_config()
 
@@ -466,6 +585,12 @@ class Img2WebpGUI:
                 self.output_dir.set(settings.get("output_dir", self.output_dir.get()))
                 self.webp_quality.set(settings.get("webp_quality",
                     config_loader.get("image_processing.webp_quality", WEBP_QUALITY)))
+
+                # マルチスレッド設定も読み込み
+                self.enable_multithreading.set(settings.get("enable_multithreading",
+                    config_loader.get("image_processing.enable_multithreading", True)))
+                self.max_workers.set(settings.get("max_workers",
+                    config_loader.get("image_processing.max_workers", 4)))
             else:
                 # JSONコンフィグから読み込み
                 self.docx_dir.set(str(current_dir / config_loader.get("directories.docx_directory", "docxs")))
@@ -473,6 +598,10 @@ class Img2WebpGUI:
                 self.html_dir.set(str(current_dir / config_loader.get("directories.html_dir", "html")))
                 self.output_dir.set(str(current_dir / config_loader.get("directories.output_base_dir", "output")))
                 self.webp_quality.set(config_loader.get("image_processing.webp_quality", WEBP_QUALITY))
+
+                # マルチスレッド設定も読み込み
+                self.enable_multithreading.set(config_loader.get("image_processing.enable_multithreading", True))
+                self.max_workers.set(config_loader.get("image_processing.max_workers", 4))
 
         except Exception as e:
             self._add_log(f"設定読み込みエラー: {e}", "warning")
@@ -491,6 +620,9 @@ class Img2WebpGUI:
 
             # GUIの設定値も更新
             self._load_settings()
+
+            # マルチスレッド表示も更新
+            self._update_multithread_display()
 
             self._add_log("設定画面を閉じました。設定を再読み込みしました", "info")
 
@@ -517,6 +649,135 @@ class Img2WebpGUI:
 
         widget.bind("<Enter>", on_enter)
         widget.bind("<Leave>", on_leave)
+
+    def _on_multithread_toggle(self):
+        """マルチスレッド有効化状態の変更処理"""
+        # UI要素が初期化されているかチェック
+        if not hasattr(self, 'workers_scale') or self.workers_scale is None:
+            return
+
+        enabled = self.enable_multithreading.get()
+        state = tk.NORMAL if enabled else tk.DISABLED
+
+        # スレッド数設定の有効/無効を切り替え
+        self.workers_scale.config(state=state)
+        if enabled:
+            self.workers_label.config(foreground='black')
+        else:
+            self.workers_label.config(foreground='gray')
+
+        # 設定を自動保存
+        self._auto_save_multithread_settings()
+
+    def _on_workers_change(self, value):
+        """スレッド数変更処理"""
+        workers = int(float(value))
+        self.workers_label.config(text=str(workers))
+
+        # 設定を自動保存
+        self._auto_save_multithread_settings()
+
+    def _auto_save_multithread_settings(self):
+        """マルチスレッド設定を自動保存"""
+        try:
+            # 設定を更新
+            config_loader.set("image_processing.enable_multithreading", self.enable_multithreading.get())
+            config_loader.set("image_processing.max_workers", self.max_workers.get())
+
+            # 設定を保存
+            config_loader.save_config()
+
+            # UI初期化完了チェック
+            if hasattr(self, 'progress_var') and self.progress_var is not None:
+                # ステータスメッセージを表示（ログには出力しない）
+                enabled = self.enable_multithreading.get()
+                workers = self.max_workers.get()
+
+                if enabled:
+                    status_msg = f"マルチスレッド設定更新: 有効 ({workers}スレッド)"
+                else:
+                    status_msg = f"マルチスレッド設定更新: 無効"
+
+                # 一時的にステータスを表示（3秒後に元に戻す）
+                original_text = self.progress_var.get()
+                self.progress_var.set(status_msg)
+                self.root.after(3000, lambda: self.progress_var.set(original_text))
+
+        except Exception as e:
+            # UI初期化完了チェック
+            if hasattr(self, 'log_text') and self.log_text is not None:
+                self._add_log(f"マルチスレッド設定保存エラー: {e}", "error")
+            else:
+                # 初期化中のエラーは標準出力に表示
+                print(f"マルチスレッド設定保存エラー: {e}")
+
+    def _on_path_change(self, event=None):
+        """パス変更時の自動保存処理"""
+        if not self.is_processing:
+            self._auto_save_all_settings()
+
+    def _on_quality_change(self, value):
+        """WebP品質変更時の自動保存処理"""
+        if not self.is_processing:
+            self._auto_save_all_settings()
+
+    def _auto_save_all_settings(self):
+        """全設定を自動保存"""
+        try:
+            # JSONコンフィグに保存
+            config_loader.set("directories.docx_directory", Path(self.docx_dir.get()).name)
+            config_loader.set("directories.images_dir", Path(self.images_dir.get()).name)
+            config_loader.set("directories.html_dir", Path(self.html_dir.get()).name)
+            config_loader.set("directories.output_base_dir", Path(self.output_dir.get()).name)
+            config_loader.set("image_processing.webp_quality", self.webp_quality.get())
+            config_loader.set("image_processing.enable_multithreading", self.enable_multithreading.get())
+            config_loader.set("image_processing.max_workers", self.max_workers.get())
+
+            # 設定を保存
+            config_loader.save_config()
+
+            # 後方互換性のためgui_settings.jsonも保存
+            settings = {
+                "docx_dir": self.docx_dir.get(),
+                "images_dir": self.images_dir.get(),
+                "html_dir": self.html_dir.get(),
+                "output_dir": self.output_dir.get(),
+                "webp_quality": self.webp_quality.get(),
+                "enable_multithreading": self.enable_multithreading.get(),
+                "max_workers": self.max_workers.get()
+            }
+            with open("gui_settings.json", "w", encoding="utf-8") as f:
+                json.dump(settings, f, ensure_ascii=False, indent=2)
+
+            # 一時的にステータスを表示（2秒後に元に戻す）
+            if hasattr(self, 'progress_var') and self.progress_var is not None:
+                original_text = self.progress_var.get()
+                self.progress_var.set("設定を保存しました")
+                self.root.after(2000, lambda: self.progress_var.set(original_text))
+
+        except Exception as e:
+            if hasattr(self, 'log_text') and self.log_text is not None:
+                self._add_log(f"設定自動保存エラー: {e}", "error")
+            else:
+                print(f"設定自動保存エラー: {e}")
+
+    def _update_multithread_display(self):
+        """マルチスレッド設定表示を更新（リロード用）"""
+        try:
+            # 最新の設定を読み込み
+            config_loader.reload_config()
+            enabled = config_loader.get("image_processing.enable_multithreading", True)
+            workers = config_loader.get("image_processing.max_workers", 4)
+
+            # 変数を更新（イベントを発生させずに）
+            self.enable_multithreading.set(enabled)
+            self.max_workers.set(workers)
+
+            # UI状態を更新
+            self._on_multithread_toggle()
+
+        except Exception as e:
+            self._add_log(f"マルチスレッド設定読み込みエラー: {e}", "error")
 
 
 def main():

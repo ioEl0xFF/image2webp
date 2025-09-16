@@ -17,7 +17,9 @@
       "png",
       "JPG",
       "PNG"
-    ]
+    ],
+    "max_workers": 13,
+    "enable_multithreading": true
   },
   "logging": {
     "log_file": "LOG.log",
